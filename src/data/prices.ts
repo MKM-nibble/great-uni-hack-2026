@@ -105,6 +105,7 @@ export const NEWS_SIGNALS: NewsSignal[] = [
     pctHigh: 0.08,
     from: '2026-11-17',
     confidence: 'signal',
+    sourceUrl: 'https://www.theguardian.com/world/2026/nov/07/strait-of-hormuz-qatar-plan-iran-nuclear-inspections',
     example: true,
   },
   {
@@ -116,6 +117,7 @@ export const NEWS_SIGNALS: NewsSignal[] = [
     pctHigh: -0.04,
     from: '2026-12-01',
     confidence: 'likely',
+    sourceUrl: 'https://www.lme.com/en/metals/non-ferrous/lme-copper',
     example: true,
   },
 ];

@@ -87,6 +87,15 @@ export function OutlookPie({ sections }: { sections: OutlookSection[] }) {
               <p className="font-semibold text-nw-ink">{i.title}</p>
               <p className="text-sm">{i.detail}</p>
               <p className="mt-1 text-sm text-nw-muted">Why: {i.why}</p>
+              {!!i.refs?.length && (
+                <p className="mt-1 flex flex-wrap gap-x-3 text-xs">
+                  {i.refs.map((r) => (
+                    <a key={r.url} href={r.url} target="_blank" rel="noreferrer" className="nw-link">
+                      {r.label} ↗
+                    </a>
+                  ))}
+                </p>
+              )}
             </li>
           ))}
         </ul>

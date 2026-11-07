@@ -165,9 +165,9 @@ try {
   await c.query("delete from signals where explanation like 'Demo scenario%'");
   for (const s of NEWS_SIGNALS) {
     await c.query(
-      `insert into signals (category_id, title, pct_low, pct_high, effective_from, confidence, method, status, explanation)
-       values ($1, $2, $3, $4, $5, $6, 'rule', 'live', $7)`,
-      [s.category, s.headline, s.pctLow ?? s.pct, s.pctHigh ?? s.pct, s.from, s.confidence, 'Demo scenario: ' + s.headline],
+      `insert into signals (category_id, title, pct_low, pct_high, effective_from, confidence, method, status, explanation, source_url)
+       values ($1, $2, $3, $4, $5, $6, 'rule', 'live', $7, $8)`,
+      [s.category, s.headline, s.pctLow ?? s.pct, s.pctHigh ?? s.pct, s.from, s.confidence, 'Demo scenario: ' + s.headline, s.sourceUrl ?? null],
     );
   }
   console.log(`demo signals: ${NEWS_SIGNALS.length}`);

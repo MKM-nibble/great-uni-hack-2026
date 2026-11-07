@@ -17,7 +17,37 @@ export interface OutlookItem {
   why: string;
   /** When it has to be paid (big costs coming). */
   due?: string;
+  refs?: Ref[];
 }
+
+export interface Ref {
+  label: string;
+  url: string;
+}
+
+const REF = {
+  bankRate: { label: 'Bank of England: Bank Rate', url: 'https://www.bankofengland.co.uk/monetary-policy/the-interest-rate-bank-rate' },
+  mortgages: { label: 'MoneyHelper: remortgaging', url: 'https://www.moneyhelper.org.uk/en/homes/buying-a-home/remortgaging-explained' },
+  fuelPrices: { label: 'GOV.UK: weekly road fuel prices', url: 'https://www.gov.uk/government/statistics/weekly-road-fuel-prices' },
+  selfAssessment: { label: 'GOV.UK: payments on account', url: 'https://www.gov.uk/understand-self-assessment-bill/payments-on-account' },
+  forecast: { label: 'Open-Meteo forecast', url: 'https://open-meteo.com/' },
+  history: { label: 'Open-Meteo: 10 years of weather history', url: 'https://open-meteo.com/en/docs/historical-weather-api' },
+  heatingOil: { label: 'BBC: paying for heating oil', url: 'https://www.bbc.co.uk/news/articles/cmj47j7e92gvo' },
+} satisfies Record<string, Ref>;
+
+const PUBLISHERS: Record<string, string> = {
+  'ofgem.gov.uk': 'Ofgem',
+  'gov.uk': 'GOV.UK',
+  'ofcom.org.uk': 'Ofcom',
+  'bankofengland.co.uk': 'Bank of England',
+  'theguardian.com': 'The Guardian',
+  'bbc.co.uk': 'BBC News',
+};
+const publisher = (url: string) => {
+  const host = new URL(url).hostname.replace(/^www./, '');
+  return PUBLISHERS[host] ?? host;
+};
+const refFrom = (label: string, url?: string): Ref[] => (url ? [{ label, url }] : []);
 
 export interface OutlookSection {
   id: SectionId;
@@ -60,6 +90,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
       amount: extra * monthsFrom(f.mortgage.fixEnds),
       detail: `+${fmtMoney(f.mortgage.low - f.mortgage.current)} to +${fmtMoney(f.mortgage.high - f.mortgage.current)} a month from ${fmtDate(f.mortgage.fixEnds)}`,
       why: `Your fixed rate ends. New deals are around Bank Rate (${(f.mortgage.bankRate * 100).toFixed(2)}%) plus a lender margin.`,
+      refs: [REF.bankRate, REF.mortgages],
     });
   }
 
@@ -74,6 +105,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
       amount: monthly * months,
       detail: `About +${fmtMoney(monthly)} a month from ${fmtDate(c.date)}`,
       why: c.source,
+      refs: c.sourceUrl ? [{ label: `${publisher(c.sourceUrl)}: ${c.title.toLowerCase()}`, url: c.sourceUrl }] : [],
     });
   }
 
@@ -93,6 +125,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
         amount: -saving * monthsFrom(s.from),
         detail: `About ${fmtMoney(saving)} a month less from ${fmtDate(s.from)}`,
         why: `${s.title}.${s.example ? ' (Demo scenario.)' : ''}`,
+        refs: refFrom(s.category === 'trade-supplies' ? 'London Metal Exchange: copper' : 'Source', s.sourceUrl),
       });
     } else if (s.confidence === 'signal') {
       // A news story can't be priced reliably: hold a buffer instead of a guess.
@@ -102,6 +135,10 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
         amount: monthly * BUFFER * monthsFrom(s.from),
         detail: `No reliable estimate. Keep a 10% buffer: about ${fmtMoney(monthly * BUFFER)} a month`,
         why: `${s.title}.${s.example ? ' (Demo scenario.)' : ''}`,
+        refs: [
+          ...refFrom(s.category === 'fuel' ? 'The Guardian: Strait of Hormuz' : 'Source', s.sourceUrl),
+          ...(s.category === 'fuel' ? [REF.fuelPrices] : []),
+        ],
       });
     } else {
       const extra = (monthly * (s.pctLow + s.pctHigh)) / 2;
@@ -111,6 +148,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
         amount: extra * monthsFrom(s.from),
         detail: `About +${fmtMoney(extra)} a month from ${fmtDate(s.from)}`,
         why: s.title,
+        refs: refFrom('Source', s.sourceUrl),
       });
     }
   }
@@ -132,6 +170,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
             ? 'Heating will cost more, but expect more boiler and burst-pipe call-outs too'
             : 'Heating is likely to cost more than usual',
         why: `The next two weeks in ${where} average ${avg.toFixed(1)}°C, against a usual ${normal.toFixed(1)}°C. We don't put a figure on it.`,
+        refs: [REF.forecast, REF.history, REF.heatingOil],
       });
     } else if (avg >= normal + 1) {
       buffer.push({
@@ -140,6 +179,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
         amount: null,
         detail: 'Heating may cost a little less than usual',
         why: `The next two weeks in ${where} average ${avg.toFixed(1)}°C, against a usual ${normal.toFixed(1)}°C.`,
+        refs: [REF.forecast, REF.history],
       });
     }
   }
@@ -151,6 +191,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
       amount: null,
       detail: `${f.weatherImpact.length} day${f.weatherImpact.length > 1 ? 's' : ''} in the next two weeks: about ${fmtMoney(Math.abs(loss))} ${loss < 0 ? 'less' : 'more'} pay`,
       why: `${f.weatherImpact[0].note}. From the forecast for ${f.world.regionName ?? 'your area'}.`,
+      refs: [REF.forecast],
     });
   }
 
@@ -170,6 +211,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
       detail: `${fmtMoney(e.total)} by ${fmtDate(e.last)}`,
       why: e.note ?? 'From your calendar',
       due: e.last,
+      refs: /self assessment/i.test(label) ? [REF.selfAssessment] : [],
     });
   }
 
