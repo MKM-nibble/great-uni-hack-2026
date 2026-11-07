@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import type { PersonaId, Profile } from '@/lib/types';
+import type { LifeEvent, PersonaId, Profile } from '@/lib/types';
+import { spainTrip, TRIP_QUESTION, type TripAnswer } from '@/lib/trip';
 import { getPersonas, type Persona } from '@/data/personas';
 import { backtest, forecast, salaryPlan, type ForecastInput } from '@/forecast/engine';
 import { buildInsights } from '@/forecast/insights';
@@ -52,11 +53,13 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
   const [horizon, setHorizon] = useState<90 | 180 | 365>(180);
   const [view, setView] = useState<View>('forecast');
   const [scrub, setScrub] = useState(0);
+  // Plans added from the chat, e.g. a trip, flow straight into the forecast.
+  const [added, setAdded] = useState<LifeEvent[]>([]);
 
   const world = useWorld(profile);
   const input: ForecastInput = useMemo(
-    () => ({ profile, transactions: persona.transactions, balance: persona.balance, asOf: now, world, horizonDays: 365 }),
-    [profile, persona, now, world],
+    () => ({ profile, transactions: persona.transactions, balance: persona.balance, asOf: now, world, horizonDays: 365, extraEvents: added }),
+    [profile, persona, now, world, added],
   );
   const f = useMemo(() => forecast(input), [input]);
   const salary = useMemo(() => salaryPlan(input, f), [input, f]);
@@ -101,6 +104,8 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
         cacheKey={id !== 'me' ? id : undefined}
         rules={rulesCoach(profile, f, salary, insights)}
         summary={coachSummary(profile, f, salary, insights)}
+        trip={() => spainTrip(profile, now, outlook.plan.safeToSpend, f.lowPoint.expected)}
+        onAdd={(e) => setAdded((xs) => (xs.some((x) => x.id === e.id) ? xs : [...xs, e]))}
       />
 
       <Card className="space-y-4">
@@ -274,7 +279,19 @@ function RewindBanner({ name, b }: { name: string; b: ReturnType<typeof backtest
   );
 }
 
-function Coach({ rules, summary, cacheKey }: { rules: CoachAdvice; summary: ReturnType<typeof coachSummary>; cacheKey?: string }) {
+function Coach({
+  rules,
+  summary,
+  cacheKey,
+  trip,
+  onAdd,
+}: {
+  rules: CoachAdvice;
+  summary: ReturnType<typeof coachSummary>;
+  cacheKey?: string;
+  trip: () => TripAnswer;
+  onAdd: (e: LifeEvent) => void;
+}) {
   const language: Language = 'English';
   const [state, setState] = useState<'idle' | 'loading' | 'error' | 'nokey'>('idle');
   const summaryKey = JSON.stringify(summary);
@@ -354,16 +371,34 @@ function Coach({ rules, summary, cacheKey }: { rules: CoachAdvice; summary: Retu
           {state === 'error' && ' · AI unavailable, showing rules'}
         </span>
       </div>
-      <Chat summary={summary} language={language} />
+      <Chat summary={summary} language={language} trip={trip} onAdd={onAdd} />
     </section>
   );
 }
 
-const STARTERS = ['Can I afford a weekend away?', 'How much should I save each month?', 'What’s my biggest risk?'];
+const STARTERS = [TRIP_QUESTION, 'How much should I save each month?', 'What’s my biggest risk?'];
+
+type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+  refs?: TripAnswer['refs'];
+  event?: LifeEvent;
+};
 
 /** Ask Stagger AI about your own forecast. It only ever sees the forecast summary. */
-function Chat({ summary, language }: { summary: ReturnType<typeof coachSummary>; language: Language }) {
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+function Chat({
+  summary,
+  language,
+  trip,
+  onAdd,
+}: {
+  summary: ReturnType<typeof coachSummary>;
+  language: Language;
+  trip: () => TripAnswer;
+  onAdd: (e: LifeEvent) => void;
+}) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [addedIds, setAddedIds] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -374,9 +409,18 @@ function Chat({ summary, language }: { summary: ReturnType<typeof coachSummary>;
     setMessages(next);
     setDraft('');
     setBusy(true);
+    if (question === TRIP_QUESTION) {
+      // Scripted demo answer: worked out from the forecast, no API call.
+      const t = trip();
+      await new Promise((r) => setTimeout(r, 700));
+      setMessages((m) => [...m, { role: 'assistant', content: t.text, refs: t.refs, event: t.event }]);
+      setBusy(false);
+      return;
+    }
     let reply: string;
     try {
-      const r = await fetch('/api/chat', { method: 'POST', body: JSON.stringify({ summary, messages: next, language }) });
+      const history = next.map(({ role, content }) => ({ role, content }));
+      const r = await fetch('/api/chat', { method: 'POST', body: JSON.stringify({ summary, messages: history, language }) });
       reply =
         r.status === 503
           ? 'Stagger AI isn’t switched on here yet. Add an API key to chat.'
@@ -398,14 +442,38 @@ function Chat({ summary, language }: { summary: ReturnType<typeof coachSummary>;
       {messages.length > 0 && (
         <div className="mb-3 max-h-72 space-y-2 overflow-y-auto" aria-live="polite">
           {messages.map((m, i) => (
-            <p
+            <div
               key={i}
               className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                 m.role === 'user' ? 'ml-auto bg-white text-nw-ink' : 'bg-white/15'
               }`}
             >
-              {m.content}
-            </p>
+              <p>{m.content}</p>
+              {m.refs && (
+                <p className="mt-2 flex flex-wrap gap-x-3 text-xs">
+                  {m.refs.map((r) => (
+                    <a key={r.url} href={r.url} target="_blank" rel="noreferrer" className="underline">
+                      {r.label} ↗
+                    </a>
+                  ))}
+                </p>
+              )}
+              {m.event && (
+                <button
+                  type="button"
+                  disabled={addedIds.includes(m.event.id)}
+                  onClick={() => {
+                    onAdd(m.event!);
+                    setAddedIds((ids) => [...ids, m.event!.id]);
+                  }}
+                  className="mt-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-nw-purple disabled:opacity-70"
+                >
+                  {addedIds.includes(m.event.id)
+                    ? '✓ Added to your budget'
+                    : `Add ${fmtMoney(m.event.amount)} to my budget`}
+                </button>
+              )}
+            </div>
           ))}
           {busy && <p className="w-fit rounded-lg bg-white/15 px-3 py-2 text-sm text-white/70">Thinking…</p>}
         </div>
