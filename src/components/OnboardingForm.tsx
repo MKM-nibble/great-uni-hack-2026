@@ -51,18 +51,18 @@ export function OnboardingForm() {
   return (
     <div className="space-y-7">
       <section className="space-y-3">
-        <h2 className="text-lg font-bold">1. What do you do?</h2>
+        <h2 className="text-xl">1. What do you do?</h2>
         <input
           aria-label="Your job"
           value={job}
           onChange={(e) => setJob(e.target.value)}
-          className="w-full rounded-lg border border-nw-line bg-white px-4 py-3"
+          className="w-full rounded-lg border-2 border-nw-line bg-white px-4 py-3 text-nw-ink placeholder:text-nw-muted/70 focus:border-nw-violet focus:outline-none"
           placeholder="e.g. warehouse operative, plumber, student"
         />
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-bold">2. How are you paid?</h2>
+        <h2 className="text-xl">2. How are you paid?</h2>
         <div className="grid gap-2 sm:grid-cols-2">
           {PAY_TYPES.map((p) => (
             <ChoiceButton
@@ -78,7 +78,7 @@ export function OnboardingForm() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-bold">3. Your calendar (optional)</h2>
+          <h2 className="text-xl">3. Your calendar (optional)</h2>
           <p className="text-sm text-nw-muted">
             Birthdays, weddings and trips change when money goes out. We’ll find them for you.
           </p>

@@ -51,7 +51,7 @@ export function CalendarConnect({ onChange }: { onChange: (s: CalendarState) => 
             key={p.id}
             type="button"
             onClick={() => setPhase({ name: 'consent', provider: p.id })}
-            className="flex w-full items-center gap-3 rounded-xl border border-nw-line bg-white p-3 text-left hover:border-nw-purple"
+            className="flex w-full items-center gap-3 rounded-lg border border-nw-line bg-white p-3 text-left hover:border-nw-violet"
           >
             <span className={`flex h-9 w-9 items-center justify-center rounded-lg font-bold text-white ${p.color}`}>
               {p.mark}
@@ -70,7 +70,7 @@ export function CalendarConnect({ onChange }: { onChange: (s: CalendarState) => 
 
   if (phase.name === 'consent') {
     return (
-      <div className="space-y-4 rounded-xl border border-nw-line bg-white p-5">
+      <div className="space-y-4 rounded-lg border border-nw-line bg-white p-5">
         <div className="flex items-center gap-3">
           <span className={`flex h-10 w-10 items-center justify-center rounded-lg font-bold text-white ${p.color}`}>
             {p.mark}
@@ -92,13 +92,13 @@ export function CalendarConnect({ onChange }: { onChange: (s: CalendarState) => 
           </li>
         </ul>
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={() => setPhase({ name: 'idle' })} className="px-3 font-semibold text-nw-purple">
+          <button type="button" onClick={() => setPhase({ name: 'idle' })} className="px-3 font-semibold text-nw-violet">
             Cancel
           </button>
           <button
             type="button"
             onClick={() => allow(p.id)}
-            className="rounded-full bg-nw-purple px-5 py-2 font-semibold text-white hover:bg-nw-deep"
+            className="rounded-full bg-nw-violet px-5 py-2 font-semibold text-white hover:bg-nw-violet-dark"
           >
             Allow
           </button>
@@ -109,15 +109,15 @@ export function CalendarConnect({ onChange }: { onChange: (s: CalendarState) => 
 
   if (phase.name === 'syncing') {
     return (
-      <div role="status" className="flex items-center gap-3 rounded-xl border border-nw-line bg-white p-5">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-nw-line border-t-nw-purple" aria-hidden />
+      <div role="status" className="flex items-center gap-3 rounded-lg border border-nw-line bg-white p-5">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-nw-line border-t-nw-violet" aria-hidden />
         <span>Looking through the next six months of your {p.label}…</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-nw-line bg-white p-5">
+    <div className="space-y-3 rounded-lg border border-nw-line bg-white p-5">
       <div className="flex items-center gap-3">
         <span className={`flex h-9 w-9 items-center justify-center rounded-lg font-bold text-white ${p.color}`}>
           {p.mark}
@@ -130,7 +130,7 @@ export function CalendarConnect({ onChange }: { onChange: (s: CalendarState) => 
             Found {found.length} upcoming events and added them to your forecast.
           </p>
         </div>
-        <button type="button" onClick={disconnect} className="ml-auto text-sm font-semibold text-nw-purple">
+        <button type="button" onClick={disconnect} className="ml-auto text-sm font-semibold text-nw-violet">
           Disconnect
         </button>
       </div>

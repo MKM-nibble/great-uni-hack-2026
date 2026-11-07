@@ -15,25 +15,25 @@ export function StartDialog({ className, children }: { className?: string; child
         ref={ref}
         aria-labelledby="start-title"
         onClick={(e) => e.target === ref.current && ref.current.close()}
-        className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl bg-nw-mist p-0 text-nw-ink backdrop:bg-nw-deep/60"
+        className="m-auto max-h-[90vh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-lg bg-white p-0 text-nw-text backdrop:bg-nw-deep/70"
       >
-        <div className="p-5 sm:p-7">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
-              <h1 id="start-title" className="text-2xl font-bold">
-                Let’s build your forecast
-              </h1>
-              <p className="text-sm text-nw-muted">Three quick questions. Everything stays in this browser.</p>
-            </div>
-            <button
-              type="button"
-              aria-label="Close"
-              onClick={() => ref.current?.close()}
-              className="rounded-full px-2 py-1 text-xl text-nw-muted hover:bg-nw-lilac"
-            >
-              ✕
-            </button>
+        <div className="flex items-start justify-between gap-4 bg-nw-purple px-5 py-6 text-white sm:px-8">
+          <div>
+            <h1 id="start-title" className="text-3xl !text-white">
+              Let’s build your forecast
+            </h1>
+            <p className="mt-1 text-white/85">Three quick questions. Everything stays in this browser.</p>
           </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => ref.current?.close()}
+            className="rounded-full px-2 py-1 text-xl text-white/80 hover:bg-white/15 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-5 sm:p-8">
           <OnboardingForm />
         </div>
       </dialog>

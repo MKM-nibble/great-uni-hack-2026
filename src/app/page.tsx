@@ -1,50 +1,49 @@
 import Link from 'next/link';
 import { PERSONA_META, PERSONA_ORDER } from '@/data/personas';
 import { StartDialog } from '@/components/StartDialog';
+import { Container, PageHero } from '@/components/ui';
 
 export default function Home() {
   return (
-    <div className="space-y-10">
-      <section className="overflow-hidden rounded-2xl bg-nw-purple text-white">
-        <div className="space-y-5 p-6 sm:p-10">
-          <p className="text-sm font-semibold uppercase tracking-wider text-white/70">Stagger by NatWest</p>
-          <h1 className="max-w-xl text-3xl font-bold leading-tight sm:text-4xl">
-            See when money gets tight, before it does.
-          </h1>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <StartDialog className="rounded-full bg-white px-6 py-3 font-semibold text-nw-purple hover:bg-nw-lilac">
-              Get my forecast
-            </StartDialog>
-          </div>
-        </div>
-      </section>
+    <>
+      <PageHero
+        eyebrow="Banking with NatWest"
+        title="See when money gets tight, before it does"
+        lead="Stagger looks weeks ahead at your bills, pay and prices, and warns you before a money storm hits."
+      >
+        <StartDialog className="rounded-full bg-white px-7 py-3 font-semibold text-nw-purple hover:bg-nw-lilac">
+          Get my forecast
+        </StartDialog>
+      </PageHero>
 
-      <section>
-        <h2 className="mb-4 text-xl font-bold">View demos</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {PERSONA_ORDER.map((id) => {
-            const p = PERSONA_META[id];
-            return (
-              <Link
-                key={id}
-                href={`/forecast/${id}`}
-                className="group flex items-center gap-4 rounded-xl border border-nw-line bg-white p-4 hover:border-nw-purple"
-              >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-nw-lilac text-lg font-bold text-nw-purple">
-                  {p.name[0]}
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-semibold group-hover:text-nw-purple">
+      <section className="py-12 sm:py-16">
+        <Container>
+          <h2 className="text-3xl sm:text-[40px]">View demos</h2>
+          <p className="mt-3 max-w-2xl">Pick someone to see how Stagger would forecast their next six months.</p>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {PERSONA_ORDER.map((id) => {
+              const p = PERSONA_META[id];
+              return (
+                <Link
+                  key={id}
+                  href={`/forecast/${id}`}
+                  className="group flex flex-col rounded-lg bg-nw-mist p-6 transition hover:bg-nw-lilac"
+                >
+                  <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-nw-purple font-display text-xl font-extrabold text-white">
+                    {p.name[0]}
+                  </span>
+                  <span className="font-display text-2xl font-extrabold text-nw-purple">
                     {p.name}, {p.age}
                   </span>
-                  <span className="block text-sm text-nw-muted">{p.blurb}</span>
-                  <span className="mt-1 block text-sm text-nw-amber">⛈ {p.storm}</span>
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+                  <span className="mt-2 block text-[15px]">{p.blurb}</span>
+                  <span className="mt-3 block text-[15px] font-medium text-nw-amber">⛈ {p.storm}</span>
+                  <span className="nw-link mt-auto pt-5 text-[15px]">See {p.name}’s forecast</span>
+                </Link>
+              );
+            })}
+          </div>
+        </Container>
       </section>
-    </div>
+    </>
   );
 }

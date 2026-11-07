@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Bitter, Inter } from 'next/font/google';
 import { Header } from '@/components/Header';
 import './globals.css';
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'] });
+// Free stand-in for NatWest's slab-serif heading face.
+const bitter = Bitter({ variable: '--font-bitter', subsets: ['latin'], weight: ['700', '800'] });
 
 export const metadata: Metadata = {
   title: 'Stagger by NatWest',
@@ -12,10 +14,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en-GB" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en-GB" className={`${inter.variable} ${bitter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <Header />
-        <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:py-10">{children}</main>
+        {/* Full width: each page lays out its own purple hero band and content column. */}
+        <main className="flex-1 pb-16">{children}</main>
       </body>
     </html>
   );

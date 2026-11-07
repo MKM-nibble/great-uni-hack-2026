@@ -9,7 +9,7 @@ import { buildInsights } from '@/forecast/insights';
 import { coachSummary, rulesCoach, LANGUAGES, type CoachAdvice, type Language } from '@/lib/coach';
 import { daysBetween, fmtDate, fmtMoney, parseIso, today } from '@/lib/dates';
 import { loadProfile } from '@/lib/profile-store';
-import { Card } from '@/components/ui';
+import { Card, Container, PageHero } from '@/components/ui';
 import { TimeMachineChart, eventsOn } from '@/components/TimeMachineChart';
 import { SNAPSHOT_WORLD, type World } from '@/data/world';
 
@@ -31,12 +31,14 @@ export function Dashboard({ id }: { id: PersonaId | 'me' }) {
   if (!now) return <p className="py-20 text-center text-nw-muted">Loading your forecast…</p>;
   if (id === 'me' && !mine) {
     return (
-      <Card className="mx-auto max-w-md text-center">
-        <p className="mb-4">You haven’t set up your forecast yet.</p>
-        <Link href="/start" className="font-semibold text-nw-purple underline">
-          Get started
-        </Link>
-      </Card>
+      <Container className="py-16">
+        <Card className="mx-auto max-w-md text-center">
+          <p className="mb-4">You haven’t set up your forecast yet.</p>
+          <Link href="/start" className="nw-link font-semibold">
+            Get started
+          </Link>
+        </Card>
+      </Container>
     );
   }
   const persona = getPersonas()[id === 'me' ? mine!.account : id];
@@ -66,9 +68,16 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
   const point = shown[Math.min(scrub, shown.length - 1)];
   const markers = (view === 'rewind' ? [] : f.events).map((e) => ({ date: e.date, label: e.label }));
 
+  const isMe = id === 'me';
   return (
-    <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-3">
+    <>
+      <PageHero
+        eyebrow={isMe ? 'Stagger · Your forecast' : `Stagger · Demo · ${persona.blurb}`}
+        title={isMe ? 'Your money forecast' : `${profile.name}’s money forecast`}
+        lead={`Looking ${horizon === 90 ? 'three' : 'six'} months ahead from ${fmtDate(f.days[0].date)}.`}
+      />
+    <Container className="space-y-6 py-10 sm:py-12">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Balance today" value={fmtMoney(persona.balance)} />
         <Stat
           label="Safe to spend today"
@@ -97,7 +106,7 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
       <Card className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold">{view === 'rewind' ? 'Rewind: one year ago' : 'Time Machine'}</h2>
+            <h2 className="text-2xl">{view === 'rewind' ? 'Rewind: one year ago' : 'Time Machine'}</h2>
             <p className="text-sm text-nw-muted">
               {view === 'rewind'
                 ? 'What Stagger would have predicted a year ago, against what really happened.'
@@ -124,7 +133,7 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
                 setView(view === 'rewind' ? 'forecast' : 'rewind');
                 setScrub(0);
               }}
-              className="whitespace-nowrap rounded-full border border-nw-purple px-4 py-1.5 text-sm font-semibold text-nw-purple hover:bg-nw-lilac"
+              className="whitespace-nowrap rounded-full border-2 border-nw-violet bg-white px-4 py-1.5 text-sm font-semibold text-nw-violet hover:bg-nw-lilac"
             >
               {view === 'rewind' ? '→ Back to now' : '⟲ Rewind a year'}
             </button>
@@ -133,7 +142,7 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
 
         {view === 'rewind' && rewind && <RewindBanner name={profile.name} b={rewind} />}
 
-        <div className="rounded-lg bg-nw-mist p-3 text-sm" aria-live="polite">
+        <div className="rounded-lg bg-white p-3 text-sm" aria-live="polite">
           <span className="font-semibold">{fmtDate(point.date)}:</span> expected{' '}
           <span className={`font-bold ${point.expected < 0 ? 'text-nw-red' : ''}`}>{fmtMoney(point.expected)}</span>
           <span className="text-nw-muted">
@@ -150,7 +159,7 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
             eventsOn(f.flows, point.date)
               .slice(0, 3)
               .map((e, i) => (
-                <span key={i} className="ml-2 inline-block rounded bg-white px-2 text-xs">
+                <span key={i} className="ml-2 inline-block rounded bg-nw-lilac px-2 text-xs">
                   {e.label} {fmtMoney(e.amount, { sign: true })}
                 </span>
               ))}
@@ -174,7 +183,8 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
         />
 
       </Card>
-    </div>
+    </Container>
+    </>
   );
 }
 
@@ -204,9 +214,9 @@ function useWorld(profile: Profile): World {
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'warn' | 'bad' }) {
   const color = { good: 'text-nw-green', warn: 'text-nw-amber', bad: 'text-nw-red' }[tone ?? 'good'];
   return (
-    <Card className="!p-4">
-      <p className="text-sm text-nw-muted">{label}</p>
-      <p className={`text-2xl font-bold ${tone ? color : ''}`}>{value}</p>
+    <Card className="!p-5">
+      <p className="text-[15px] text-nw-muted">{label}</p>
+      <p className={`mt-1 font-display text-3xl font-extrabold ${tone ? color : 'text-nw-purple'}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-nw-muted">{hint}</p>}
     </Card>
   );
@@ -222,14 +232,14 @@ function Segmented<T extends number>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex rounded-full bg-nw-mist p-1 text-sm">
+    <div className="flex rounded-full bg-white p-1 text-sm">
       {options.map(([v, label]) => (
         <button
           key={v}
           type="button"
           aria-pressed={value === v}
           onClick={() => onChange(v)}
-          className={`whitespace-nowrap rounded-full px-3 py-1 font-semibold ${value === v ? 'bg-white text-nw-purple shadow-sm' : 'text-nw-muted'}`}
+          className={`whitespace-nowrap rounded-full px-3 py-1 font-semibold ${value === v ? 'bg-nw-violet text-white' : 'text-nw-muted hover:text-nw-violet'}`}
         >
           {label}
         </button>
@@ -309,12 +319,12 @@ function Coach({ rules, summary, cacheKey }: { rules: CoachAdvice; summary: Retu
   const advice = ai ?? rules;
   return (
     <section
-      className="rounded-xl bg-gradient-to-br from-nw-purple to-nw-deep p-5 text-white"
+      className="rounded-lg bg-nw-purple p-6 text-white sm:p-8"
       dir={['اردو', 'العربية'].includes(language) && ai ? 'rtl' : undefined}
       aria-label="Your Stagger coach"
     >
       <p className="text-xs font-semibold uppercase tracking-wider text-white/70">Your coach</p>
-      <p className="mt-1 text-lg font-semibold">{advice.headline}</p>
+      <p className="mt-2 font-display text-2xl font-extrabold leading-snug">{advice.headline}</p>
       <ol className="mt-4 space-y-3">
         {advice.actions.map((a, i) => (
           <li key={i} className="flex gap-3">
