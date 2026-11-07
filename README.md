@@ -95,10 +95,10 @@ The demo is built around **Sam** and **Amira**. Dev and Kayla stay in the switch
 1. (20s) **The problem.** Budgeting apps look backwards and assume a steady salary. Real life doesn't work like that.
 2. (60s) **Sam, the well-paid engineer.** Six months looks fine and the coach says "fine for now". Switch to **1 year**:
    the mortgage fix ends in April, the bonus hides it for a few months, and he's overdrawn by August.
-   Tap *Why?* to show Bank Rate + lender margin. Then the what-ifs: **lock a rate now** + **pause the ISA**, and
-   balance in a year goes from −£541 to +£2,600. Line: *this works for everyone, not just people in trouble.*
-3. (60s) **Amira, the plumber.** Same engine, different storm: the January tax bill, plus *live* weather.
-   "Heavy rain on 11–12 Nov: about −£63 pay" comes from today's forecast for Sheffield. 
+   The coach says what to do: look at deals before 1 April, and keep the March bonus for the jump.
+   Line: *this works for everyone, not just people in trouble.*
+3. (60s) **Amira, the plumber.** Same engine, different storm: the January tax bill, then a dip around Eid.
+   Her pay forecast already includes *live* weather for Sheffield (rain days cut outdoor work).
 4. (20s) **Rewind a year** (Dev, or whoever is on screen): "Stagger would have warned him 17 weeks early."
 5. (20s) **Honesty.** Live data from Neon (news, weather, rates), a person approves every news signal,
    demo transactions are synthetic, and nothing personal is stored. In NatWest, setup is zero steps.
