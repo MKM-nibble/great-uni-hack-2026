@@ -87,6 +87,8 @@ export interface NewsSignal {
   category: Category;
   headline: string;
   pct: number;
+  pctLow?: number;
+  pctHigh?: number;
   from: string;
   confidence: Confidence;
   sourceUrl?: string;
@@ -95,30 +97,25 @@ export interface NewsSignal {
 
 export const NEWS_SIGNALS: NewsSignal[] = [
   {
-    id: 'coffee',
-    category: 'coffee',
-    headline: 'Coffee bean prices stay high after poor harvests',
-    pct: 0.1,
-    from: '2027-01-01',
+    id: 'hormuz-fuel',
+    category: 'fuel',
+    headline: 'Strait of Hormuz disruption keeps oil prices high',
+    pct: 0.05,
+    pctLow: 0.03,
+    pctHigh: 0.08,
+    from: '2026-11-17',
     confidence: 'signal',
     example: true,
   },
   {
-    id: 'groceries-dairy',
-    category: 'groceries',
-    headline: 'Supermarkets warn of dairy and chocolate price rises',
-    pct: 0.02,
+    id: 'copper-parts',
+    category: 'trade-supplies',
+    headline: 'Copper prices fall to a two-year low as demand slows',
+    pct: -0.06,
+    pctLow: -0.08,
+    pctHigh: -0.04,
     from: '2026-12-01',
-    confidence: 'signal',
-    example: true,
-  },
-  {
-    id: 'streaming',
-    category: 'subscriptions',
-    headline: 'Streaming services announce new UK price tiers',
-    pct: 0.12,
-    from: '2027-02-01',
-    confidence: 'signal',
+    confidence: 'likely',
     example: true,
   },
 ];

@@ -5,7 +5,7 @@ import { Pool, type PoolClient } from '@neondatabase/serverless';
 import { CATEGORY_LABEL } from '@/forecast/categorise';
 import { JOB_TEMPLATES } from '@/data/jobs';
 import { FESTIVALS } from '@/data/calendar';
-import { BANK_RATE, CPI_ANNUAL, CPI_SOURCE, RATE_DECISIONS, RATE_SOURCE, SCHEDULED_CHANGES } from '@/data/prices';
+import { BANK_RATE, CPI_ANNUAL, CPI_SOURCE, NEWS_SIGNALS, RATE_DECISIONS, RATE_SOURCE, SCHEDULED_CHANGES } from '@/data/prices';
 import { getPersonas } from '@/data/personas';
 import {
   DRIVERS, DRIVER_KEYWORDS, EXTRA_POLICY_CHANGES, IMPACT_RULES, JOB_WEATHER_EFFECTS,
@@ -160,6 +160,17 @@ try {
       price_high: g.priceRange[1],
     })),
   );
+
+  // Demo scenarios: live so the demo shows them, and labelled so nobody mistakes them for real news.
+  await c.query("delete from signals where explanation like 'Demo scenario%'");
+  for (const s of NEWS_SIGNALS) {
+    await c.query(
+      `insert into signals (category_id, title, pct_low, pct_high, effective_from, confidence, method, status, explanation)
+       values ($1, $2, $3, $4, $5, $6, 'rule', 'live', $7)`,
+      [s.category, s.headline, s.pctLow ?? s.pct, s.pctHigh ?? s.pct, s.from, s.confidence, 'Demo scenario: ' + s.headline],
+    );
+  }
+  console.log(`demo signals: ${NEWS_SIGNALS.length}`);
 
   await c.query('commit');
   console.log('seed complete');

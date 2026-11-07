@@ -62,6 +62,8 @@ export interface World {
   weather: {
     days: WeatherDay[];
     effects: { condition: WeatherCondition; effect: number; note: string }[];
+    /** Long-run average temperature for this month here, to say if it is colder than usual. */
+    normalTMean?: number;
   };
 }
 
@@ -74,8 +76,8 @@ export const SNAPSHOT_WORLD: World = {
     id: s.id,
     category: s.category,
     title: s.headline,
-    pctLow: s.pct,
-    pctHigh: s.pct,
+    pctLow: s.pctLow ?? s.pct,
+    pctHigh: s.pctHigh ?? s.pct,
     from: s.from,
     confidence: s.confidence,
     method: 'rule',

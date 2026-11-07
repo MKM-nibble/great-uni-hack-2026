@@ -25,6 +25,7 @@ export type Category =
   | 'coffee'
   | 'entertainment'
   | 'childcare'
+  | 'trade-supplies'
   | 'tax'
   | 'other';
 

@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     order by length(p.area) desc limit 1`) as { id: string; name: string }[];
   const regionId = region?.id ?? null;
 
-  const [policies, cpi, signals, rates, weather, effects, bankRate] = await Promise.all([
+  const [policies, cpi, signals, rates, weather, effects, bankRate, normals] = await Promise.all([
     db`select * from policy_changes
        where effective_date >= current_date - 30
          and (applies_to_regions is null or ${regionId}::text = any(applies_to_regions))
@@ -62,6 +62,9 @@ export async function GET(request: Request) {
       : Promise.resolve([]),
     db`select condition, effect, note from job_weather_effects where job_template_id = ${job}`,
     db`select value from market_points where series_id = 'boe_bank_rate' order by date desc limit 1`,
+    regionId
+      ? db`select t_mean from weather_normals where region_id = ${regionId} and month = extract(month from current_date)`
+      : Promise.resolve([]),
   ]);
 
   const verifiedNote = (p: Record<string, unknown>) => (p.verified_at ? '' : ' (not yet verified)');
@@ -111,6 +114,7 @@ export async function GET(request: Request) {
         method: s.method as Signal['method'],
         explanation: String(s.explanation),
         sourceUrl: (s.source_url as string) ?? undefined,
+        example: String(s.explanation).startsWith('Demo scenario'),
       }),
     ),
     rates: rates.map((r) => ({
@@ -133,6 +137,7 @@ export async function GET(request: Request) {
         effect: Number(e.effect),
         note: String(e.note),
       })),
+      normalTMean: normals[0] ? Number(normals[0].t_mean) : undefined,
     },
   };
 

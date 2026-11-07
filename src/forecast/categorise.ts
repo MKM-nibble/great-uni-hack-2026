@@ -19,6 +19,7 @@ const MCC: Record<string, Category> = {
   '5542': 'fuel',
   '7922': 'entertainment',
   '8351': 'childcare',
+  '5200': 'trade-supplies',
 };
 
 export function categorise(t: ObTransaction): Category {
@@ -48,6 +49,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   coffee: 'Coffee',
   entertainment: 'Going out',
   childcare: 'Childcare',
+  'trade-supplies': 'Tools & parts',
   tax: 'Tax',
   other: 'Shopping & other',
 };

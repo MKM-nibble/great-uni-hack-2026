@@ -194,10 +194,10 @@ function dev(): Persona {
 function amira(): Persona {
   const season = JOB_TEMPLATES.trades.seasonality;
   const clients = ['K WRIGHT', 'HALLAM LETTINGS LTD', 'P OKAFOR', 'BROOKSIDE HOMES', 'S PATEL', 'R JONES'];
-  const { txns, balance } = generate(33, 3400, (d, l, r) => {
+  const { txns, balance } = generate(33, 5200, (d, l, r) => {
     // Invoices land on random weekdays and are often paid late, so income is lumpy.
     if (dow(d) >= 1 && dow(d) <= 5 && r() < 0.3) {
-      const amt = between(r, 125, 535) * season[month(d) - 1];
+      const amt = between(r, 140, 590) * season[month(d) - 1];
       l.credit(d, amt, `${clients[Math.floor(r() * clients.length)]} INVOICE`);
     }
     if (dom(d) === 1) l.debit(d, 950, 'RENT - PRIMROSE ESTATES', '6513');

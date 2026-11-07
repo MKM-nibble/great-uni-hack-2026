@@ -54,6 +54,7 @@ export const MERCHANT_RULES = [
   { mcc: '5542', category: 'fuel' },
   { mcc: '7922', category: 'entertainment' },
   { mcc: '8351', category: 'childcare' },
+  { mcc: '5200', category: 'trade-supplies' },
 ];
 
 export const DRIVERS = [

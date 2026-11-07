@@ -6,6 +6,8 @@ import type { PersonaId, Profile } from '@/lib/types';
 import { getPersonas, type Persona } from '@/data/personas';
 import { backtest, forecast, salaryPlan, type ForecastInput } from '@/forecast/engine';
 import { buildInsights } from '@/forecast/insights';
+import { buildOutlook } from '@/forecast/outlook';
+import { OutlookPie } from '@/components/OutlookPie';
 import { coachSummary, rulesCoach, LANGUAGES, type CoachAdvice, type Language } from '@/lib/coach';
 import { daysBetween, fmtDate, fmtMoney, parseIso, today } from '@/lib/dates';
 import { loadProfile } from '@/lib/profile-store';
@@ -59,6 +61,7 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
   const f = useMemo(() => forecast(input), [input]);
   const salary = useMemo(() => salaryPlan(input, f), [input, f]);
   const insights = useMemo(() => buildInsights(profile, f), [profile, f]);
+  const outlook = useMemo(() => buildOutlook(profile, f), [profile, f]);
   const rewind = useMemo(
     () => (view === 'rewind' ? backtest(profile, persona.transactions, persona.balance, now) : null),
     [view, profile, persona, now],
@@ -80,22 +83,19 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Balance today" value={fmtMoney(persona.balance)} />
         <Stat
-          label="Safe to spend today"
-          value={fmtMoney(f.safeToSpend)}
-          hint={
-            f.safeToSpend > 0
-              ? 'Extra you can spend and still stay above £50 at your lowest point'
-              : 'Your forecast dips below zero, so hold off on extras for now'
-          }
-          tone={f.safeToSpend < 50 ? 'warn' : 'good'}
+          label="Safe to spend this month"
+          value={fmtMoney(outlook.plan.safeToSpend)}
+          hint="On non-essentials, after bills, everyday costs and what to put aside"
+          tone={outlook.plan.safeToSpend < 50 ? 'warn' : 'good'}
         />
         <Stat
-          label="Lowest point"
-          value={fmtMoney(f.lowPoint.expected)}
-          hint={`Around ${fmtDate(f.lowPoint.date)}`}
-          tone={f.lowPoint.expected < 0 ? 'bad' : undefined}
+          label="Put aside this month"
+          value={fmtMoney(outlook.plan.putAside)}
+          hint="For the costs coming up, with a 10% buffer where prices are uncertain"
         />
       </div>
+
+      <OutlookPie sections={outlook.sections} />
 
       <Coach
         cacheKey={id !== 'me' ? id : undefined}
@@ -199,7 +199,7 @@ function useWorld(profile: Profile): World {
   const query = `postcode=${encodeURIComponent(profile.postcode ?? '')}&job=${profile.jobTemplate}`;
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/world?${query}`)
+    fetch(`/api/world?${query}`, { cache: 'no-store' })
       .then((r) => (r.ok ? (r.json() as Promise<World>) : null))
       .then((w) => {
         if (!cancelled && w) setWorld(w);

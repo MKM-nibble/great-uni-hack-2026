@@ -76,6 +76,7 @@ const VARIABLE_CATEGORIES: Category[] = [
   'entertainment',
   'other',
   'childcare',
+  'trade-supplies',
 ];
 
 type Txn = { date: Date; amount: number; category: Category; name: string; credit: boolean };
