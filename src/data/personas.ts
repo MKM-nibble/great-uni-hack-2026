@@ -295,6 +295,9 @@ export function getPersonas(): Record<PersonaId, Persona> {
 // Sam and Amira first: they are the two the demo is built around.
 export const PERSONA_ORDER: PersonaId[] = ['sam', 'amira', 'dev', 'kayla'];
 
+/** The customers shown on the home page. The others stay reachable by URL. */
+export const DEMO_PERSONAS: PersonaId[] = ['sam', 'amira'];
+
 /** Static details for menus, safe to render on the server. */
 export const PERSONA_META: Record<PersonaId, { name: string; age: number; blurb: string; storm: string }> = {
   sam: { name: 'Sam', age: 31, blurb: 'Software engineer, salaried, one child', storm: 'Mortgage fix ends in April' },

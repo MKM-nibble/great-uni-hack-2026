@@ -27,8 +27,12 @@ export function PageHero({
   children?: ReactNode;
 }) {
   return (
-    <section className="bg-nw-purple text-white">
-      <Container className="py-10 sm:py-14">
+    <section className="relative overflow-hidden bg-gradient-to-br from-nw-purple via-nw-purple to-nw-deep text-white">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-24 -top-32 h-96 w-96 rounded-full bg-nw-violet/40 blur-3xl"
+      />
+      <Container className="relative pb-10 pt-20 sm:pb-14 sm:pt-24">
         {eyebrow && <p className="mb-3 text-[15px] text-white/80">{eyebrow}</p>}
         <h1 className="max-w-3xl text-4xl !text-white sm:text-[46px] sm:leading-[1.25]">{title}</h1>
         {lead && <p className="mt-4 max-w-3xl text-lg text-white/90 sm:text-[22px] sm:leading-8">{lead}</p>}

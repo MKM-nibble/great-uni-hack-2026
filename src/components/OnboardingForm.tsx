@@ -87,7 +87,6 @@ export function OnboardingForm() {
       </section>
 
       <div className="flex items-center justify-end gap-3 border-t border-nw-line pt-4">
-        {!ready && <span className="text-sm text-nw-muted">Add your job and how you’re paid to continue</span>}
         <PrimaryButton disabled={!ready || busy} onClick={finish}>
           {busy ? 'Building your forecast…' : 'Show my forecast'}
         </PrimaryButton>
