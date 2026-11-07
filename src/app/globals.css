@@ -1,31 +1,66 @@
 @import "tailwindcss";
 
-/* NatWest-style palette */
+/*
+ * NatWest-style design tokens, taken from natwest.com's public pages.
+ * Their own fonts (RN House Sans, Knile) are licensed, so we use free
+ * look-alikes: Inter for body text and Bitter for the chunky slab headings.
+ */
 @theme {
-  --color-nw-purple: #5a287d;
-  --color-nw-deep: #3c1053;
-  --color-nw-ink: #1d1d1b;
-  --color-nw-lilac: #f2edf6;
-  --color-nw-mist: #f6f5f8;
-  --color-nw-line: #e3dde8;
-  --color-nw-muted: #646068;
+  --color-nw-purple: #5a287d; /* core brand purple: main nav, hero bands, headings, footer */
+  --color-nw-deep: #3c1053; /* darkest purple: top utility bar, hover states */
+  --color-nw-violet: #5e10b1; /* bright purple: links and primary buttons */
+  --color-nw-violet-dark: #4a0d8c;
+  --color-nw-lavender: #be99e6; /* outline on dark buttons */
+  --color-nw-ink: #1d1d1b; /* strongest text: figures */
+  --color-nw-text: #4c4950; /* body copy */
+  --color-nw-muted: #646068; /* secondary copy, NatWest's body grey */
+  --color-nw-lilac: #f2eaf9; /* light purple band */
+  --color-nw-mist: #f2f2f8; /* grey-lilac card fill */
+  --color-nw-line: #e1dce6;
   --color-nw-teal: #1d7b8a;
   --color-nw-green: #2a7d3e;
   --color-nw-amber: #b45d00;
   --color-nw-red: #c4122f;
   --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-bitter), Georgia, serif;
 }
 
-body {
-  background: var(--color-nw-mist);
-  color: var(--color-nw-ink);
+@layer base {
+  body {
+    background: #fff;
+    color: var(--color-nw-text);
+    font-size: 1.0625rem;
+    line-height: 1.55;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--color-nw-purple);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+
+  /* Inline text links: bright purple, underlined, like natwest.com */
+  .nw-link {
+    color: var(--color-nw-violet);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1px;
+  }
+  .nw-link:hover {
+    color: var(--color-nw-deep);
+    text-decoration-thickness: 2px;
+  }
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-nw-teal);
+  outline: 3px solid var(--color-nw-violet);
   outline-offset: 2px;
 }
 
 input[type='range'] {
-  accent-color: var(--color-nw-purple);
+  accent-color: var(--color-nw-violet);
 }

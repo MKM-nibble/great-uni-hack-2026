@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, PrimaryButton } from '@/components/ui';
+import { Card, Container, PageHero, PrimaryButton } from '@/components/ui';
 import { CATEGORY_LABEL } from '@/forecast/categorise';
 import type { Category } from '@/lib/types';
 import { fmtDate } from '@/lib/dates';
@@ -67,43 +67,44 @@ export default function Admin() {
 
   if (!data) {
     return (
+      <Container className="py-16">
       <Card className="mx-auto max-w-sm space-y-3">
-        <h1 className="text-xl font-bold">Signal review</h1>
+        <h1 className="text-2xl">Signal review</h1>
         <input
           type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
           placeholder="Admin token"
           aria-label="Admin token"
-          className="w-full rounded-lg border border-nw-line px-3 py-2"
+          className="w-full rounded-lg border-2 border-nw-line bg-white px-3 py-2"
         />
         {error && <p className="text-sm text-nw-red">{error}</p>}
         <PrimaryButton onClick={() => load(token)}>Open</PrimaryButton>
       </Card>
+      </Container>
     );
   }
 
   const proposed = data.signals.filter((s) => s.status === 'proposed');
   const live = data.signals.filter((s) => s.status === 'live');
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Signal review</h1>
-          <p className="text-sm text-nw-muted">
-            News the pipeline thinks will move prices. Nothing reaches customers until you make it live.
-          </p>
-        </div>
-        <p className="text-sm text-nw-muted">
-          Claude spend so far: <b>${Number(data.spend.usd).toFixed(3)}</b> over {data.spend.calls} calls
-        </p>
-      </div>
+    <>
+    <PageHero
+      eyebrow="Stagger · Admin"
+      title="Signal review"
+      lead="News the pipeline thinks will move prices. Nothing reaches customers until you make it live."
+    >
+      <p className="text-white/85">
+        Claude spend so far: <b className="text-white">${Number(data.spend.usd).toFixed(3)}</b> over {data.spend.calls} calls
+      </p>
+    </PageHero>
+    <Container className="space-y-8 py-10">
 
       <Section title={`To review (${proposed.length})`} rows={proposed} onReview={review} />
       <Section title={`Live (${live.length})`} rows={live} onReview={review} />
 
       <Card>
-        <h2 className="mb-2 font-bold">Recent ingest runs</h2>
+        <h2 className="mb-2 text-xl">Recent ingest runs</h2>
         <ul className="space-y-1 text-sm">
           {data.runs.map((r, i) => (
             <li key={i}>
@@ -113,7 +114,8 @@ export default function Admin() {
           ))}
         </ul>
       </Card>
-    </div>
+    </Container>
+    </>
   );
 }
 
@@ -128,7 +130,7 @@ function Section({
 }) {
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-bold">{title}</h2>
+      <h2 className="text-2xl">{title}</h2>
       {!rows.length && <p className="text-sm text-nw-muted">Nothing here.</p>}
       {rows.map((s) => (
         <Card key={s.id} className="!p-4">
@@ -140,7 +142,7 @@ function Section({
               </p>
               <p className="font-semibold">
                 {s.source_url ? (
-                  <a href={s.source_url} target="_blank" rel="noreferrer" className="hover:underline">
+                  <a href={s.source_url} target="_blank" rel="noreferrer" className="text-nw-ink hover:underline">
                     {s.title}
                   </a>
                 ) : (
@@ -162,7 +164,7 @@ function Section({
                   <button
                     type="button"
                     onClick={() => onReview(s.id, 'rejected')}
-                    className="rounded-full border border-nw-line px-4 py-1.5 text-sm font-semibold"
+                    className="rounded-full border-2 border-nw-violet bg-white px-4 py-1.5 text-sm font-semibold text-nw-violet"
                   >
                     Reject
                   </button>
@@ -171,7 +173,7 @@ function Section({
                 <button
                   type="button"
                   onClick={() => onReview(s.id, 'proposed')}
-                  className="rounded-full border border-nw-line px-4 py-1.5 text-sm font-semibold"
+                  className="rounded-full border-2 border-nw-violet bg-white px-4 py-1.5 text-sm font-semibold text-nw-violet"
                 >
                   Take down
                 </button>
