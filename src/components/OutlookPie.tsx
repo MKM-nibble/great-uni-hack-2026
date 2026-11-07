@@ -83,15 +83,24 @@ export function OutlookPie({ sections }: { sections: OutlookSection[] }) {
       {current && (
         <ul className="divide-y divide-nw-line rounded-lg bg-white">
           {current.items.map((i) => (
-            <li key={i.id} className="p-4">
-              <p className="font-semibold text-nw-ink">{i.title}</p>
-              <p className="text-sm">{i.detail}</p>
-              <p className="mt-1 text-sm text-nw-muted">Why: {i.why}</p>
+            <li key={i.id} className="space-y-1 px-5 py-4">
+              <p className="text-lg font-bold leading-snug text-nw-ink">{i.title}</p>
+              <p className="font-semibold text-nw-purple">{i.detail}</p>
+              <p className="pt-1 text-base leading-relaxed text-nw-ink">
+                <span className="font-bold">Why: </span>
+                {i.why.replace(/^Why:\s*/, '')}
+              </p>
               {!!i.refs?.length && (
-                <p className="mt-1 flex flex-wrap gap-x-3 text-xs">
+                <p className="flex flex-wrap gap-2 pt-2">
                   {i.refs.map((r) => (
-                    <a key={r.url} href={r.url} target="_blank" rel="noreferrer" className="nw-link">
-                      {r.label} ↗
+                    <a
+                      key={r.url}
+                      href={r.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full border border-nw-line px-3 py-1 text-xs font-medium text-nw-violet no-underline hover:bg-nw-lilac"
+                    >
+                      {r.label} <span aria-hidden>↗</span>
                     </a>
                   ))}
                 </p>
