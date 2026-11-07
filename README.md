@@ -7,10 +7,12 @@
 
 ## The problem
 
-Budgeting apps assume a steady monthly salary. Millions of people don't get one: shift and
-zero-hours workers, the self-employed, and students living on termly loans plus casual work.
-For them, the problem isn't overspending. It's **timing**: money comes in at different times
-from when bills go out. A bad January, a tax bill, or a loan that runs out in week 9 of term
+Budgeting apps assume a steady monthly salary. Stagger works for **everyone**, salaried
+included, because everyone has uneven months: Christmas, a car repair, an energy price rise.
+But it's **built first for the people traditional tools fail**: shift and zero-hours workers,
+the self-employed, and students living on termly loans plus casual work. For them, the
+problem isn't overspending. It's **timing**: money comes in at different times from when
+bills go out. A bad January, a tax bill, or a loan that runs out in week 9 of term
 can push them into overdraft fees, high-cost credit, or missed bills.
 
 ## The idea in one line
@@ -69,6 +71,30 @@ Real Open Banking connection, auth, live market feeds, regulated financial advic
 production the data would come from the user's NatWest account, so **setup would be zero
 steps**. That's our feasibility story.
 
+## Where the data comes from (the customer does almost nothing)
+
+**Rule: infer first, ask only what can't be inferred, and confirm with one tap.**
+
+| Layer | What we get | How | Customer effort |
+| --- | --- | --- | --- |
+| 1. Bank transactions | Income amounts and timing, payers, bills, spending categories | Already held by NatWest for its own customers; Open Banking for accounts elsewhere | **None** |
+| 2. Inferred profile | Income type (salaried / shift / self-employed / student), regular bills, seasonal patterns | Rules on the transactions: payroll payer names, HMRC payments, Student Loans Company deposits, direct debits | **One tap** to confirm ("Looks like you're self-employed. Right?") |
+| 3. Public data | Interest rates, price rises by category, energy price cap, bank holidays | BoE, ONS CPI, Ofgem, GOV.UK bank holidays API. The same data for every user | **None** |
+| 4. Personal calendar | Birthdays, religious festivals, a gig, a holiday | Pick festivals from chips (Christmas, Eid, Diwali…), add 1–3 personal dates, optional calendar import | **~30 seconds, optional** |
+| 5. Plain-English context | "My hours drop after Christmas", "Invoices often get paid late" | One free-text box; Claude turns it into structured adjustments | **Optional** |
+
+Onboarding is therefore three screens: *confirm what we found → pick your dates → anything we
+should know?* The forecast works after screen one; each later screen just sharpens it.
+
+**Categorising transactions cheaply:** use merchant category codes and keyword rules first,
+which cover most transactions. Send only the leftover unknown merchant names to a small Claude
+model in one batch and cache the result. Never send whole statements to the LLM.
+
+**For the MVP:** seed 12 months of synthetic transactions per persona in the **same JSON shape
+as Open Banking account/transaction APIs**, so the code that reads them is the code that would
+read real data. Ask the NatWest mentors whether their developer sandbox is open to teams today.
+It's a bonus if it is, but don't depend on it.
+
 ## Demo personas (one switcher, three angles)
 
 | Persona | Income shape | The storm Stagger catches |
@@ -76,6 +102,7 @@ steps**. That's our feasibility story.
 | **Dev, 34**, warehouse nights, zero-hours, 2 kids | Weekly, swings with season | Peak season ends just as Christmas and a kid's birthday hit, then a January drought |
 | **Amira, 41**, self-employed plumber | Lumpy invoices, late payers | Self-assessment tax bill + payment on account on 31 Jan, plus Eid spending |
 | **Kayla, 19**, student, bar shifts | Maintenance loan 3x a year + casual pay | Loan runs out in week 9 of term, and a concert ticket she wants |
+| **Sam, 29**, salaried office worker *(baseline)* | Same pay every month | Energy price cap rise + a friend's wedding abroad. Shows it works for everyone |
 
 **Make it memorable: the backtest.** Rewind Dev's last 12 months and show that Stagger
 *would have* warned him 6 weeks before he actually went overdrawn last January, and that
@@ -110,11 +137,11 @@ shows the prediction works instead of just claiming it does.
 
 ## Design
 
-A clean, bank-grade look in the spirit of NatWest's app: deep purple, lots of white space,
-calm cards, one clear action per screen, accessible contrast and large tap targets.
-Use our own wordmark ("Stagger") with a "NatWest challenge prototype" label rather than
-copying NatWest's logo or pretending to be their real site. Check with the NatWest mentors
-on the day about what branding they're happy with.
+NatWest has OK'd using their branding on the day, so present Stagger as **a feature inside
+the NatWest app** ("Stagger by NatWest"): NatWest purple, their logo in the header, lots of
+white space, calm cards, one clear action per screen, accessible contrast and large tap
+targets. Keep a small "Hackathon prototype · demo data" tag in the footer so nobody mistakes
+it for a live product.
 
 ## How it scores
 
