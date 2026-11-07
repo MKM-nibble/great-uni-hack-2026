@@ -13,16 +13,16 @@ Christmas and weddings. But it's **built first for the people traditional tools 
 shift and zero-hours workers, the self-employed, and students. For them, the problem isn't
 overspending. It's **timing**: money comes in at different times from when bills go out.
 
-## How it works for the user (4 screens)
+## How it works for the user (3 steps, then the forecast)
 
-1. **About you:** household (alone / partner / kids), housing (rent / mortgage / family).
-   Big buttons, no typing.
-2. **Your work:** *what do you do?* (free text with suggestions: "warehouse operative",
-   "plumber", "nurse") plus *how are you paid?*: Salaried · Hourly / shifts · Zero-hours ·
-   Self-employed · Student · Not working / benefits.
-3. **Connect (all optional):** NatWest account (already connected), Spotify, Calendar.
-   Every connection shows what we read and why. There's always a "Skip".
-4. **Your Time Machine:** a 90-day forecast, danger zones, and 2–3 actions.
+1. **Your job:** *what do you do?* (free text with suggestions: "warehouse operative",
+   "plumber", "nurse").
+2. **How are you paid?** Salaried · Hourly / shifts · Zero-hours · Self-employed · Student ·
+   Not working / benefits.
+3. **Your calendar (optional, mocked):** connect a calendar and Stagger picks up upcoming
+   dates, events and trips. There's always a "Skip".
+
+Then **your Time Machine:** a 90-day forecast, danger zones, and 2–3 actions.
 
 ## What the app does with that: modules switch on from the answers
 
@@ -65,7 +65,7 @@ For example: "You spend about £48 a month on coffee. Coffee prices are forecast
 | --- | --- | --- |
 | NatWest account | Mocked | Seeded 12 months of transactions in **Open Banking JSON shape** |
 | Spotify → gigs | **Real if time allows**, cached fallback | Spotify top artists → Ticketmaster Discovery API (free key) for UK gigs → "Your top artist plays Manchester on 14 Mar, tickets usually £45–£70" |
-| Calendar | Real-ish | `.ics` upload or Google Calendar, plus festival chips (Christmas, Eid, Diwali, Lunar New Year…) |
+| Calendar | Mocked | A realistic connect flow (pick a provider, permissions, sync) that returns a fixed set of sample events. No real sign-in. `src/data/mock-calendar.ts` |
 | Other AI assistants | **Not built**: a "coming soon" tile only | No consumer API exists, and pulling someone's AI chat history into a bank is a privacy red flag for judges |
 
 ## MVP features (build these)
@@ -98,7 +98,7 @@ The demo is built around **Sam** and **Amira**. Dev and Kayla stay in the switch
    Tap *Why?* to show Bank Rate + lender margin. Then the what-ifs: **lock a rate now** + **pause the ISA**, and
    balance in a year goes from −£541 to +£2,600. Line: *this works for everyone, not just people in trouble.*
 3. (60s) **Amira, the plumber.** Same engine, different storm: the January tax bill, plus *live* weather.
-   "Heavy rain on 11–12 Nov: about −£63 pay" comes from today's forecast for Sheffield. Show **pay yourself a salary**.
+   "Heavy rain on 11–12 Nov: about −£63 pay" comes from today's forecast for Sheffield. 
 4. (20s) **Rewind a year** (Dev, or whoever is on screen): "Stagger would have warned him 17 weeks early."
 5. (20s) **Honesty.** Live data from Neon (news, weather, rates), a person approves every news signal,
    demo transactions are synthetic, and nothing personal is stored. In NatWest, setup is zero steps.
@@ -192,10 +192,11 @@ On Vercel, `vercel.json` runs the weather and headline jobs daily.
 | `src/ingest/` | RSS headlines → signals, Claude judging, Open-Meteo weather |
 | `db/` | Schema migrations and reference data |
 | `src/app/admin` | Signal review queue, ingest log, Claude spend |
+| `src/data/mock-calendar.ts` | The mocked calendar provider list and sample events |
 | `src/data/calendar.ts` | Festivals, learned festival spending, the self-assessment tax rule |
 | `src/lib/claude.ts` | The only code that calls Claude (coach + job matching), with memo cache |
 | `src/lib/spend-guard.ts` | Hard cap on live Claude calls per server (`STAGGER_MAX_CALLS`, default 150) |
-| `src/app/start` | 3-screen onboarding (saved in the browser only) |
+| `src/app/start` | 3-step onboarding: job, pay type, calendar (saved in the browser only) |
 | `src/components/Dashboard.tsx` | The Time Machine screen |
 
 ## Tech
