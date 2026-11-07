@@ -2,7 +2,8 @@ import type { Category, Confidence, Profile, WhatIf } from '@/lib/types';
 import type { Forecast } from '@/forecast/engine';
 import type { GigSuggestion } from '@/data/personas';
 import { CATEGORY_LABEL } from '@/forecast/categorise';
-import { CPI_ANNUAL, CPI_SOURCE, NEWS_SIGNALS, RATE_DECISIONS, RATE_SOURCE, SCHEDULED_CHANGES } from '@/data/prices';
+import { CPI_SOURCE, RATE_SOURCE } from '@/data/prices';
+import { CONDITION_LABEL, type WeatherCondition } from '@/data/world';
 import { addDays, daysBetween, fmtDate, fmtMoney, iso, parseIso } from '@/lib/dates';
 
 export interface Insight {
@@ -18,14 +19,20 @@ export interface Insight {
 }
 
 const MIN_MONTHLY_IMPACT = 0.5;
+const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(x !== 0 && Math.abs(x) < 0.1 ? 1 : 0)}%`;
 
-/** Price and rate cards, only for things this person actually spends money on. */
-export function priceInsights(f: Forecast): Insight[] {
+/**
+ * Price, rate, wage and weather cards, only for things this person actually
+ * spends money on or that touch how they're paid.
+ */
+export function worldInsights(profile: Profile, f: Forecast): Insight[] {
+  const w = f.world;
   const spend = (c: Category) => f.monthlySpend[c] ?? 0;
   const out: Insight[] = [];
+  const asOf = parseIso(f.asOf);
   const end = parseIso(f.days[f.days.length - 1].date);
 
-  for (const c of SCHEDULED_CHANGES) {
+  for (const c of w.scheduled) {
     if (parseIso(c.date) > end || spend(c.category) <= 0) continue;
     const monthly = c.monthlyAmount ?? spend(c.category) * (c.pct ?? 0);
     if (monthly < MIN_MONTHLY_IMPACT) continue;
@@ -38,30 +45,44 @@ export function priceInsights(f: Forecast): Insight[] {
       confidence: c.confidence,
       why: [
         `Your ${CATEGORY_LABEL[c.category].toLowerCase()} costs about ${fmtMoney(spend(c.category))} a month`,
-        c.monthlyAmount ? `Rise of ${fmtMoney(c.monthlyAmount)} a month` : `Change of ${((c.pct ?? 0) * 100).toFixed(1)}%`,
+        c.monthlyAmount ? `Rise of ${fmtMoney(c.monthlyAmount)} a month` : `Change of ${pct(c.pct ?? 0)}`,
       ],
       source: { label: c.source, url: c.sourceUrl },
     });
   }
 
-  for (const s of NEWS_SIGNALS) {
-    const monthly = spend(s.category) * s.pct;
-    if (monthly < MIN_MONTHLY_IMPACT) continue;
+  // One card per category: the strongest live signal, with the rest counted.
+  const live = w.signals.filter((s) => !s.to || parseIso(s.to) >= asOf);
+  for (const [cat, group] of groupBy(live, (s) => s.category)) {
+    const c = cat as Category;
+    const strength = (s: (typeof group)[number]) => Math.abs(s.pctLow + s.pctHigh);
+    const top = group.reduce((a, b) => (strength(b) > strength(a) ? b : a));
+    const falling = top.pctHigh < 0;
+    const [lo, hi] = [Math.abs(spend(c) * top.pctLow), Math.abs(spend(c) * top.pctHigh)].sort((a, b) => a - b);
+    if (hi < MIN_MONTHLY_IMPACT) continue;
+    const range = Math.round(lo) === Math.round(hi) ? fmtMoney(hi) : `${fmtMoney(lo)} to ${fmtMoney(hi)}`;
     out.push({
-      id: `news-${s.id}`,
-      kind: 'price',
-      title: `${CATEGORY_LABEL[s.category]} may cost ${fmtMoney(monthly, { sign: true })} a month`,
-      body: `${s.headline}. You spend about ${fmtMoney(spend(s.category))} a month on this.`,
-      date: s.from,
-      confidence: s.confidence,
-      why: [`Signal from the news, roughly +${Math.round(s.pct * 100)}%`, 'Low confidence: news is not a guarantee'],
-      source: { label: s.example ? 'Example news signal (demo)' : 'News', url: s.sourceUrl },
-      example: s.example,
+      id: `signal-${c}`,
+      kind: falling ? 'good' : 'price',
+      title: falling
+        ? `${CATEGORY_LABEL[c]} may get cheaper: ${range} a month less`
+        : `${CATEGORY_LABEL[c]} may cost ${range} more a month`,
+      body: `${top.title}. You spend about ${fmtMoney(spend(c))} a month on ${CATEGORY_LABEL[c].toLowerCase()}.`,
+      date: top.from,
+      confidence: top.confidence,
+      why: [
+        top.explanation,
+        `Expected change ${pct(top.pctLow)} to ${pct(top.pctHigh)}, from about ${fmtDate(top.from)}`,
+        ...(group.length > 1 ? [`${group.length - 1} more related ${group.length === 2 ? 'story' : 'stories'}`] : []),
+        top.method === 'official' ? 'Official announcement' : 'Early signal from the news, not a guarantee',
+      ],
+      source: { label: top.example ? 'Example news signal (demo)' : top.sourceUrl ? 'Read the story' : 'News', url: top.sourceUrl },
+      example: top.example,
     });
   }
 
-  const cpiCats = (Object.entries(CPI_ANNUAL) as [Category, number][])
-    .map(([c, pct]) => ({ c, extra: (spend(c) * pct) }))
+  const cpiCats = (Object.entries(w.cpi) as [Category, number][])
+    .map(([c, rate]) => ({ c, extra: spend(c) * rate }))
     .filter((x) => x.extra >= MIN_MONTHLY_IMPACT)
     .sort((a, b) => b.extra - a.extra);
   if (cpiCats.length) {
@@ -77,7 +98,43 @@ export function priceInsights(f: Forecast): Insight[] {
     });
   }
 
-  const nextRate = RATE_DECISIONS.find((r) => parseIso(r.date) >= parseIso(f.asOf));
+  for (const c of w.incomeChanges) {
+    if (parseIso(c.date) > end || !f.income.variable) continue;
+    if (c.payTypes && !c.payTypes.includes(profile.payType)) continue;
+    out.push({
+      id: `wage-${c.id}`,
+      kind: 'good',
+      title: `${c.title}: about ${fmtMoney(f.income.weeklyBase * c.pct, { sign: true })} a week`,
+      body: `From ${fmtDate(c.date)}, if your hours stay the same. Already in your forecast.`,
+      date: c.date,
+      confidence: c.confidence,
+      why: [`A ${pct(c.pct)} rise on your usual week of about ${fmtMoney(f.income.weeklyBase)}`],
+      source: c.sourceUrl ? { label: 'GOV.UK', url: c.sourceUrl } : undefined,
+    });
+  }
+
+  if (f.weatherImpact.length) {
+    const byCondition = groupBy(f.weatherImpact, (x) => x.condition);
+    const [cond, hits] = [...byCondition].sort((a, b) => b[1].length - a[1].length)[0];
+    const effect = hits[0].effect;
+    const total = (f.income.weeklyBase / 5) * effect * hits.length;
+    out.push({
+      id: 'weather',
+      kind: effect < 0 ? 'warning' : 'good',
+      title: `${CONDITION_LABEL[cond as WeatherCondition]} on ${hits.length} day${hits.length > 1 ? 's' : ''} soon: about ${fmtMoney(total, { sign: true })} pay`,
+      body: `${hits[0].note}. ${hits.map((h) => fmtDate(h.date)).slice(0, 4).join(', ')}${hits.length > 4 ? '…' : ''}.`,
+      date: hits[0].date,
+      confidence: 'likely',
+      why: [
+        `16-day forecast for ${w.regionName ?? 'your area'}`,
+        `For your kind of work, pay moves about ${pct(effect)} on those days`,
+        'Further ahead, your usual seasonal pattern is used instead',
+      ],
+      source: { label: 'Open-Meteo weather forecast', url: 'https://open-meteo.com/' },
+    });
+  }
+
+  const nextRate = w.rates.find((r) => parseIso(r.date) >= asOf);
   if (nextRate) {
     out.push({
       id: 'rate',
@@ -91,6 +148,12 @@ export function priceInsights(f: Forecast): Insight[] {
     });
   }
   return out;
+}
+
+function groupBy<T>(xs: T[], key: (x: T) => string): Map<string, T[]> {
+  const m = new Map<string, T[]>();
+  for (const x of xs) m.set(key(x), [...(m.get(key(x)) ?? []), x]);
+  return m;
 }
 
 export function buildInsights(profile: Profile, f: Forecast): Insight[] {
@@ -137,7 +200,7 @@ export function buildInsights(profile: Profile, f: Forecast): Insight[] {
     });
   }
 
-  out.push(...priceInsights(f));
+  out.push(...worldInsights(profile, f));
 
   if (f.firstLikely || f.firstRisk) {
     out.push({

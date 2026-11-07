@@ -16,6 +16,7 @@ export default function Start() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
+  const [postcode, setPostcode] = useState('');
   const [household, setHousehold] = useState<Profile['household'] | null>(null);
   const [housing, setHousing] = useState<Profile['housing'] | null>(null);
   const [job, setJob] = useState('');
@@ -51,6 +52,7 @@ export default function Start() {
       festivals,
       personalEvents: events.filter((e) => e.label && e.date && e.amount > 0),
       account: accountFor(payType!),
+      postcode: postcode.trim().toUpperCase().split(/\s/)[0] || undefined,
     };
     saveProfile(profile);
     router.push('/forecast/me');
@@ -80,6 +82,19 @@ export default function Start() {
               className="w-full rounded-lg border border-nw-line bg-white px-4 py-3"
               placeholder="First name"
             />
+          </label>
+          <label className="block">
+            <span className="mb-1 block font-semibold">First part of your postcode (optional)</span>
+            <input
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value.slice(0, 4))}
+              className="w-32 rounded-lg border border-nw-line bg-white px-4 py-3 uppercase"
+              placeholder="e.g. LS6"
+              autoComplete="postal-code"
+            />
+            <span className="mt-1 block text-sm text-nw-muted">
+              For local weather, bus fares and prices. We never ask for your full address.
+            </span>
           </label>
           <fieldset className="space-y-2">
             <legend className="mb-2 font-semibold">Who do you live with?</legend>

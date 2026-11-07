@@ -55,7 +55,8 @@ export const SCHEDULED_CHANGES: PriceChange[] = [
 /** Tier 2: official inflation by category (ONS CPI, annual rate). */
 export const CPI_ANNUAL: Partial<Record<Category, number>> = {
   groceries: 0.035,
-  transport: 0.02,
+  fuel: 0.02,
+  'public-transport': 0.035,
   'eating-out': 0.04,
   coffee: 0.04,
   subscriptions: 0.03,

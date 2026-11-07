@@ -2,6 +2,7 @@ import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import type { CoachAdvice, CoachSummary, Language } from '@/lib/coach';
 import type { JobTemplateId } from '@/lib/types';
+import { recordUsage } from '@/ingest/classify';
 
 // Every call is small: a ~300-token summary in, a short JSON answer out.
 // Results are cached in memory, and demo personas use answers committed in
@@ -59,6 +60,7 @@ async function structured<T>(key: string, system: string, user: string, schema: 
     system,
     messages: [{ role: 'user', content: user }],
   });
+  await recordUsage(key.split(':')[0], response.usage);
   if (response.stop_reason === 'refusal') throw new Error('Claude declined this request');
   const text = response.content.find((b) => b.type === 'text');
   if (!text || text.type !== 'text') throw new Error('No text in Claude response');
