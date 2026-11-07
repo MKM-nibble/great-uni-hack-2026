@@ -120,10 +120,56 @@ the AI coach, copy `.env.example` to `.env.local` and add `ANTHROPIC_API_KEY`.
 | `pnpm precompute` | With `pnpm dev` running: pre-generate AI coaching for the 4 demo customers into `src/data/coach-cache.json`. **Run on demo morning and commit**, so the demo makes no live calls |
 | `pnpm news` | Turn real headlines in `scripts/headlines.txt` into price signals (check them, then paste into `src/data/prices.ts`) |
 
+## Database (Neon Postgres)
+
+The outside world lives in a Neon project, **`great-uni-hack-2026`** (London, `aws-eu-west-2`).
+Nothing personal is stored there: transactions stay in the (synthetic) bank account and onboarding
+answers stay in the browser.
+
+**Getting access (teammates):** get invited to the Neon org, then in the repo folder:
+
+```bash
+neon login
+```
+```bash
+neon link --project-id dark-bonus-61945676 -y
+```
+
+This writes `DATABASE_URL` into `.env.local`. Ask for `CRON_SECRET` and `ADMIN_TOKEN` in the team chat.
+Without a database the app still works on the built-in snapshot (the dashboard shows "Offline snapshot").
+
+| Command | What it does |
+| --- | --- |
+| `pnpm db:migrate` | Apply `db/migrations/*.sql` |
+| `pnpm db:seed` | Load reference data (safe to re-run) |
+| `pnpm db:ingest headlines` | Fetch RSS (BBC, Guardian, BoE, GOV.UK), match price drivers, propose signals |
+| `pnpm db:ingest weather` | 16-day Open-Meteo forecast for every region |
+| `pnpm db:ingest weather-normals` | 10 years of history → monthly normals (run once) |
+
+Then open **`/admin`** (with `ADMIN_TOKEN`) to review proposed signals: nothing reaches customers
+until someone clicks **Make live**. The page also shows ingest runs and total Claude spend.
+On Vercel, `vercel.json` runs the weather and headline jobs daily.
+
+**How a headline becomes a price on someone's forecast**
+
+1. **Keywords** (`driver_keywords`, free) spot candidate stories: "Strait of Hormuz", "bus fare cap", "Red Sea shipping".
+2. **Judging**: one batched Claude call per run decides *relevant? up or down? how strongly?* Without a key,
+   a simple up/down word check is used. Keywords alone get direction wrong: "Hormuz could reopen" means fuel gets *cheaper*.
+3. **Impact rules** (`impact_rules`, ours) turn the driver into a range and a lag per category. For example,
+   oil supply means fuel +2–8% after ~10 days, and buses +0–2% at the next fare review.
+4. **A person approves it** in `/admin`. Then `/api/world` serves it, and only people who actually spend
+   on that category see a card, sized to their own spend.
+
+**Tables:** `regions`, `postcode_areas`, `job_templates`, `job_weather_effects`, `festivals`,
+`festival_dates`, `merchant_rules`, `policy_changes` (tax, wages, fares, bills), `rate_decisions`,
+`market_series` + `market_points` (CPI, Brent, pump prices, Bank Rate), `weather_daily`,
+`weather_normals`, `sources`, `headlines`, `drivers`, `driver_keywords`, `impact_rules`, `signals`,
+`events_catalog`, `ingest_runs`, `llm_usage`.
+
 ### Before the demo checklist
 
-- [ ] Check every figure in `src/data/prices.ts` (Ofgem cap, council tax, phone rises, CPI, BoE dates) against its source
-- [ ] Replace the **example** news signals with real ones (`pnpm news`)
+- [ ] Check every row in `policy_changes` and `rate_decisions` against its source, then set `verified_at` (cards say "not yet verified" until then)
+- [ ] Run `pnpm db:ingest headlines` and `weather` on demo morning, and review signals in `/admin`
 - [ ] Check festival dates in `src/data/calendar.ts`
 - [ ] Drop NatWest's official logo into `public/` and swap it into `src/components/Header.tsx`
 - [ ] `pnpm precompute` (add `LANGUAGES=English,Polski` to pre-generate more languages) and commit the cache
@@ -137,7 +183,12 @@ the AI coach, copy `.env.example` to `.env.local` and add `ANTHROPIC_API_KEY`.
 | `src/forecast/categorise.ts` | Transaction categories from merchant codes and keywords |
 | `src/data/personas.ts` | The 4 demo customers: 24 months of synthetic Open Banking-shaped transactions each |
 | `src/data/jobs.ts` | Pay types and seasonal income templates per kind of job |
-| `src/data/prices.ts` | Scheduled price changes, CPI by category, BoE dates, news signals |
+| `src/data/prices.ts` | Snapshot of price changes, CPI, BoE dates (seed data + offline fallback) |
+| `src/data/world.ts` | The `World` type: everything outside the account that moves a forecast |
+| `src/app/api/world` | Builds a person's `World` from the database (region, job, live signals, weather) |
+| `src/ingest/` | RSS headlines → signals, Claude judging, Open-Meteo weather |
+| `db/` | Schema migrations and reference data |
+| `src/app/admin` | Signal review queue, ingest log, Claude spend |
 | `src/data/mock-calendar.ts` | The mocked calendar provider list and sample events |
 | `src/data/calendar.ts` | Festivals, learned festival spending, the self-assessment tax rule |
 | `src/lib/claude.ts` | The only code that calls Claude (coach + job matching), with memo cache |

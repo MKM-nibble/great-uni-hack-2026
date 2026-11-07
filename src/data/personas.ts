@@ -120,6 +120,7 @@ function sam(): Persona {
     profile: baseProfile({
       name: 'Sam',
       account: 'sam',
+      postcode: 'LS6',
       job: 'Claims handler',
       payType: 'salaried',
       festivals: ['christmas'],
@@ -167,6 +168,7 @@ function dev(): Persona {
     profile: baseProfile({
       name: 'Dev',
       account: 'dev',
+      postcode: 'BD3',
       household: 'kids',
       job: 'Warehouse operative (nights)',
       jobTemplate: 'warehouse-retail',
@@ -217,6 +219,7 @@ function amira(): Persona {
     profile: baseProfile({
       name: 'Amira',
       account: 'amira',
+      postcode: 'S8',
       household: 'partner',
       job: 'Plumber',
       jobTemplate: 'trades',
@@ -262,6 +265,7 @@ function kayla(): Persona {
     profile: baseProfile({
       name: 'Kayla',
       account: 'kayla',
+      postcode: 'LS2',
       job: 'Student + bar staff',
       jobTemplate: 'hospitality',
       payType: 'student',

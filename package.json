@@ -9,11 +9,15 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "inspect": "tsx scripts/inspect-personas.ts",
-    "precompute": "tsx --env-file=.env.local scripts/precompute-coach.ts",
-    "news": "tsx --env-file=.env.local scripts/extract-news-signals.ts"
+    "precompute": "tsx --env-file=.env.local scripts/precompute-coach.mts",
+    "news": "tsx --env-file=.env.local scripts/extract-news-signals.mts",
+    "db:migrate": "tsx --env-file=.env.local scripts/db-migrate.mts",
+    "db:seed": "tsx --env-file=.env.local scripts/db-seed.mts",
+    "db:ingest": "tsx --env-file=.env.local scripts/db-ingest.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
+    "@neondatabase/serverless": "^1.2.0",
     "next": "16.4.5",
     "react": "19.3.0",
     "react-dom": "19.3.0",

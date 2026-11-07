@@ -16,7 +16,8 @@ export type Category =
   | 'energy'
   | 'council-tax'
   | 'groceries'
-  | 'transport'
+  | 'fuel'
+  | 'public-transport'
   | 'phone'
   | 'subscriptions'
   | 'eating-out'
@@ -62,6 +63,8 @@ export interface Profile {
   connections: { spotify: boolean; calendar: boolean };
   festivals: string[];
   personalEvents: LifeEvent[];
+  /** First part of the postcode (e.g. "LS6"), for local weather, fares and prices. */
+  postcode?: string;
   /** Which seeded account the demo reads transactions from. */
   account: PersonaId;
 }

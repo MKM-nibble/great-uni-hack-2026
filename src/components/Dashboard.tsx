@@ -11,6 +11,7 @@ import { daysBetween, fmtDate, fmtMoney, parseIso, today } from '@/lib/dates';
 import { loadProfile } from '@/lib/profile-store';
 import { Card } from '@/components/ui';
 import { TimeMachineChart, eventsOn } from '@/components/TimeMachineChart';
+import { SNAPSHOT_WORLD, type World } from '@/data/world';
 
 type View = 'forecast' | 'rewind';
 
@@ -48,9 +49,10 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
   const [view, setView] = useState<View>('forecast');
   const [scrub, setScrub] = useState(0);
 
+  const world = useWorld(profile);
   const input: ForecastInput = useMemo(
-    () => ({ profile, transactions: persona.transactions, balance: persona.balance, asOf: now }),
-    [profile, persona, now],
+    () => ({ profile, transactions: persona.transactions, balance: persona.balance, asOf: now, world }),
+    [profile, persona, now, world],
   );
   const f = useMemo(() => forecast(input), [input]);
   const salary = useMemo(() => salaryPlan(input, f), [input, f]);
@@ -174,6 +176,29 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
       </Card>
     </div>
   );
+}
+
+/**
+ * Prices, policy, news signals and weather for this person's area and job,
+ * from the database. Starts on the built-in snapshot and swaps in live data
+ * when it arrives, so the page never waits on the network.
+ */
+function useWorld(profile: Profile): World {
+  const [world, setWorld] = useState<World>(SNAPSHOT_WORLD);
+  const query = `postcode=${encodeURIComponent(profile.postcode ?? '')}&job=${profile.jobTemplate}`;
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/world?${query}`)
+      .then((r) => (r.ok ? (r.json() as Promise<World>) : null))
+      .then((w) => {
+        if (!cancelled && w) setWorld(w);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+  return world;
 }
 
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'warn' | 'bad' }) {

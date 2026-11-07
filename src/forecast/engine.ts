@@ -3,7 +3,7 @@ import { addDays, daysBetween, iso, parseIso } from '@/lib/dates';
 import { categorise } from '@/forecast/categorise';
 import { JOB_TEMPLATES, hasVariableIncome } from '@/data/jobs';
 import { FESTIVALS, festivalEvents, previousOccurrence, ruleEvents } from '@/data/calendar';
-import { CPI_ANNUAL, NEWS_SIGNALS, SCHEDULED_CHANGES } from '@/data/prices';
+import { SNAPSHOT_WORLD, conditionsOn, midpoint, type WeatherCondition, type World } from '@/data/world';
 
 // The forecast is plain arithmetic, not AI: every number can be traced back
 // to transactions, a rule or a published source. Claude only explains it.
@@ -56,13 +56,17 @@ export interface Forecast {
   firstRisk: string | null; // first day the cautious line goes below zero
   firstLikely: string | null; // first day the expected line goes below zero
   safeToSpend: number;
+  world: World;
+  /** Forecast days where the weather changes how much this person can earn. */
+  weatherImpact: { date: string; condition: WeatherCondition; effect: number; note: string }[];
 }
 
 const BAND_Z = 1.28; // ~80% band
 const SAFETY_BUFFER = 50;
 const VARIABLE_CATEGORIES: Category[] = [
   'groceries',
-  'transport',
+  'fuel',
+  'public-transport',
   'eating-out',
   'coffee',
   'entertainment',
@@ -229,17 +233,22 @@ function learnFestivalSpend(txns: Txn[], profile: Profile, asOf: Date, billNames
   return learned;
 }
 
-function priceFactor(category: Category, date: Date, asOf: Date): number {
+function priceFactor(world: World, category: Category, date: Date, asOf: Date): number {
   let f = 1;
-  const cpi = CPI_ANNUAL[category];
+  const cpi = world.cpi[category];
   if (cpi) f *= (1 + cpi) ** (daysBetween(asOf, date) / 365);
-  for (const s of NEWS_SIGNALS) if (s.category === category && date >= parseIso(s.from)) f *= 1 + s.pct;
-  return f;
+  // Several stories about the same shock are one move, not many: take the strongest active signal.
+  let signal = 0;
+  for (const s of world.signals) {
+    if (s.category !== category || date < parseIso(s.from) || (s.to && date > parseIso(s.to))) continue;
+    if (Math.abs(midpoint(s)) > Math.abs(signal)) signal = midpoint(s);
+  }
+  return f * (1 + signal);
 }
 
-function billAmount(b: RecurringBill, date: Date): number {
+function billAmount(world: World, b: RecurringBill, date: Date): number {
   let amt = b.amount;
-  for (const c of SCHEDULED_CHANGES) {
+  for (const c of world.scheduled) {
     if (c.category !== b.category || date < parseIso(c.date)) continue;
     amt = c.monthlyAmount ? amt + c.monthlyAmount : amt * (1 + (c.pct ?? 0));
   }
@@ -254,10 +263,26 @@ export interface ForecastInput {
   horizonDays?: number;
   whatIfs?: WhatIf[];
   extraEvents?: LifeEvent[];
+  world?: World;
+}
+
+/**
+ * Pay multiplier for the week ending on `payday`: the average effect of the
+ * weather on each of the seven working days before it. Only days with a
+ * real forecast count; beyond that the job's seasonal pattern covers it.
+ */
+function weatherFactor(world: World, payday: Date, hits: Map<string, { effect: number }[]>): number {
+  let total = 0;
+  for (let k = 1; k <= 7; k++) {
+    const day = hits.get(iso(addDays(payday, -k + 1)));
+    total += 1 + (day ? day.reduce((s, h) => s + h.effect, 0) : 0);
+  }
+  return world.weather.days.length ? total / 7 : 1;
 }
 
 export function forecast(input: ForecastInput): Forecast {
   const { profile, asOf, whatIfs = [] } = input;
+  const world = input.world ?? SNAPSHOT_WORLD;
   const horizon = input.horizonDays ?? 180;
   const end = addDays(asOf, horizon);
   const txns = prepare(input.transactions, asOf);
@@ -279,6 +304,22 @@ export function forecast(input: ForecastInput): Forecast {
   const scale: Partial<Record<Category, number>> = {};
   for (const w of whatIfs) if (w.categoryScale) scale[w.categoryScale.category] = w.categoryScale.factor;
 
+  // Weather only moves pay for variable earners in jobs it affects.
+  const weatherImpact: Forecast['weatherImpact'] = [];
+  if (income.variable) {
+    for (const day of world.weather.days) {
+      for (const c of conditionsOn(day)) {
+        const e = world.weather.effects.find((x) => x.condition === c);
+        if (e) weatherImpact.push({ date: day.date, condition: c, effect: e.effect, note: e.note });
+      }
+    }
+  }
+  const weatherHits = groupBy(weatherImpact, (w) => w.date);
+  const wageFactor = (d: Date) =>
+    world.incomeChanges
+      .filter((c) => d >= parseIso(c.date) && (!c.payTypes || c.payTypes.includes(profile.payType)))
+      .reduce((f, c) => f * (1 + c.pct), 1);
+
   const flows: Flow[] = [];
   for (let i = 0; i < horizon; i++) {
     const d = addDays(asOf, i);
@@ -287,7 +328,7 @@ export function forecast(input: ForecastInput): Forecast {
 
     for (const b of bills) {
       if (d.getUTCDate() === b.day && b.months.includes(m + 1)) {
-        flows.push({ date: ds, amount: -billAmount(b, d), label: b.merchant, kind: 'bill', category: b.category });
+        flows.push({ date: ds, amount: -billAmount(world, b, d), label: b.merchant, kind: 'bill', category: b.category });
       }
     }
     for (const r of income.regular) {
@@ -295,16 +336,17 @@ export function forecast(input: ForecastInput): Forecast {
     }
     if (income.variable && d.getUTCDay() === income.payday) {
       const season = JOB_TEMPLATES[profile.jobTemplate].seasonality[m];
+      const factor = season * wageFactor(d) * weatherFactor(world, d, weatherHits);
       flows.push({
         date: ds,
-        amount: income.weeklyBase * season,
+        amount: income.weeklyBase * factor,
         label: 'Expected pay',
         kind: 'income',
         sd: income.weeklySd * season,
       });
     }
     for (const [c, daily] of Object.entries(variableDaily) as [Category, number][]) {
-      const amt = daily * priceFactor(c, d, asOf) * (scale[c] ?? 1);
+      const amt = daily * priceFactor(world, c, d, asOf) * (scale[c] ?? 1);
       flows.push({ date: ds, amount: -amt, label: c, kind: 'spend', category: c });
     }
   }
@@ -342,6 +384,8 @@ export function forecast(input: ForecastInput): Forecast {
     firstLikely: days.find((d) => d.expected < 0)?.date ?? null,
     // Spending more today lowers every later day, so the limit is set by the lowest point ahead.
     safeToSpend: Math.max(0, Math.floor((low.expected - SAFETY_BUFFER) / 5) * 5),
+    world,
+    weatherImpact,
   };
 }
 
