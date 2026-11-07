@@ -122,3 +122,12 @@ export const NEWS_SIGNALS: NewsSignal[] = [
     example: true,
   },
 ];
+
+/** Bank Rate today. ⚠ Check against the Bank of England before the demo. */
+export const BANK_RATE = { value: 0.0375, asOf: '2026-11-07' };
+
+/**
+ * New fixed mortgage rates usually sit above Bank Rate. A deliberately wide
+ * range, so the forecast shows a cautious and a hopeful case.
+ */
+export const MORTGAGE_MARGIN = { low: 0.006, high: 0.014 };

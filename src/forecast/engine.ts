@@ -4,6 +4,7 @@ import { categorise } from '@/forecast/categorise';
 import { JOB_TEMPLATES, hasVariableIncome } from '@/data/jobs';
 import { FESTIVALS, festivalEvents, previousOccurrence, ruleEvents } from '@/data/calendar';
 import { SNAPSHOT_WORLD, conditionsOn, midpoint, type WeatherCondition, type World } from '@/data/world';
+import { MORTGAGE_MARGIN } from '@/data/prices';
 
 // The forecast is plain arithmetic, not AI: every number can be traced back
 // to transactions, a rule or a published source. Claude only explains it.
@@ -53,12 +54,15 @@ export interface Forecast {
   monthlySpend: Partial<Record<Category, number>>;
   festivalLearned: Record<string, number>;
   lowPoint: { date: string; expected: number; low: number };
+  /** Last day the headline numbers and cards look at. */
+  statsEnd: string;
   firstRisk: string | null; // first day the cautious line goes below zero
   firstLikely: string | null; // first day the expected line goes below zero
   safeToSpend: number;
   world: World;
   /** Forecast days where the weather changes how much this person can earn. */
   weatherImpact: { date: string; condition: WeatherCondition; effect: number; note: string }[];
+  mortgage: MortgageOutlook | null;
 }
 
 const BAND_Z = 1.28; // ~80% band
@@ -148,7 +152,7 @@ function modelIncome(txns: Txn[], asOf: Date, horizonEnd: Date, profile: Profile
     const last = ts[ts.length - 1].date;
     const next: string[] = [];
     if (gap >= 26 && gap <= 35) {
-      for (let m = 1; m <= 8; m++) {
+      for (let m = 1; m <= 14; m++) {
         const d = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth() + m, last.getUTCDate()));
         if (d >= asOf && d <= horizonEnd) next.push(iso(d));
       }
@@ -162,6 +166,22 @@ function modelIncome(txns: Txn[], asOf: Date, horizonEnd: Date, profile: Profile
       }
     }
     regular.push({ payer, amount: amounts[amounts.length - 1], next });
+  }
+
+  // Once-a-year payments (a bonus, a tax refund): seen twice, about a year apart.
+  const twoYearsAgo = addDays(asOf, -730);
+  const older = txns.filter((t) => t.credit && t.date >= twoYearsAgo && !regularNames.has(t.name));
+  for (const [payer, ts] of groupBy(older, (t) => t.name)) {
+    if (ts.length !== 2) continue;
+    const gap = daysBetween(ts[0].date, ts[1].date);
+    if (gap < 330 || gap > 400) continue;
+    const nextDate = addDays(ts[1].date, 365);
+    regularNames.add(payer);
+    regular.push({
+      payer,
+      amount: ts[1].amount,
+      next: nextDate >= asOf && nextDate <= horizonEnd ? [iso(nextDate)] : [],
+    });
   }
 
   const template = JOB_TEMPLATES[profile.jobTemplate];
@@ -261,6 +281,8 @@ export interface ForecastInput {
   balance: number;
   asOf: Date;
   horizonDays?: number;
+  /** Days the headline numbers (lowest point, safe to spend, warnings) look across. Default 180. */
+  statsDays?: number;
   whatIfs?: WhatIf[];
   extraEvents?: LifeEvent[];
   world?: World;
@@ -305,6 +327,15 @@ export function forecast(input: ForecastInput): Forecast {
   for (const w of whatIfs) if (w.categoryScale) scale[w.categoryScale.category] = w.categoryScale.factor;
 
   // Weather only moves pay for variable earners in jobs it affects.
+  const mortgage = mortgageOutlook(profile, world, asOf);
+  const locked = whatIfs.some((w) => w.mortgageLock);
+  const paused = new Set(whatIfs.flatMap((w) => w.pauseBills ?? []));
+  const mortgageAfterFix = (b: RecurringBill, d: Date) => {
+    if (!mortgage || b.category !== 'mortgage' || d < parseIso(mortgage.fixEnds)) return null;
+    if (locked) return { amount: mortgage.low, sd: 0 };
+    return { amount: (mortgage.low + mortgage.high) / 2, sd: (mortgage.high - mortgage.low) / 2 / BAND_Z };
+  };
+
   const weatherImpact: Forecast['weatherImpact'] = [];
   if (income.variable) {
     for (const day of world.weather.days) {
@@ -327,8 +358,16 @@ export function forecast(input: ForecastInput): Forecast {
     const m = d.getUTCMonth();
 
     for (const b of bills) {
-      if (d.getUTCDate() === b.day && b.months.includes(m + 1)) {
-        flows.push({ date: ds, amount: -billAmount(world, b, d), label: b.merchant, kind: 'bill', category: b.category });
+      if (d.getUTCDate() === b.day && b.months.includes(m + 1) && !paused.has(b.merchant)) {
+        const newDeal = mortgageAfterFix(b, d);
+        flows.push({
+          date: ds,
+          amount: -(newDeal?.amount ?? billAmount(world, b, d)),
+          label: newDeal ? `${b.merchant} (new rate)` : b.merchant,
+          kind: 'bill',
+          category: b.category,
+          sd: newDeal?.sd,
+        });
       }
     }
     for (const r of income.regular) {
@@ -367,7 +406,9 @@ export function forecast(input: ForecastInput): Forecast {
     days.push({ date: ds, expected: bal, low: bal - spread, high: bal + spread });
   }
 
-  const low = days.reduce((a, b) => (b.expected < a.expected ? b : a), days[0]);
+  // The chart can look a year ahead; the headline numbers cover the next six months.
+  const statsWindow = days.slice(0, input.statsDays ?? 180);
+  const low = statsWindow.reduce((a, b) => (b.expected < a.expected ? b : a), statsWindow[0]);
 
   return {
     asOf: iso(asOf),
@@ -380,12 +421,65 @@ export function forecast(input: ForecastInput): Forecast {
     monthlySpend: monthly,
     festivalLearned,
     lowPoint: { date: low.date, expected: low.expected, low: low.low },
-    firstRisk: days.find((d) => d.low < 0)?.date ?? null,
-    firstLikely: days.find((d) => d.expected < 0)?.date ?? null,
+    statsEnd: statsWindow[statsWindow.length - 1].date,
+    firstRisk: statsWindow.find((d) => d.low < 0)?.date ?? null,
+    firstLikely: statsWindow.find((d) => d.expected < 0)?.date ?? null,
     // Spending more today lowers every later day, so the limit is set by the lowest point ahead.
     safeToSpend: Math.max(0, Math.floor((low.expected - SAFETY_BUFFER) / 5) * 5),
     world,
     weatherImpact,
+    mortgage,
+  };
+}
+
+/** Standard repayment mortgage: monthly payment for a balance, rate and term. */
+export function monthlyPayment(balance: number, annualRate: number, years: number): number {
+  const r = annualRate / 12;
+  const n = Math.round(years * 12);
+  return r === 0 ? balance / n : (balance * r) / (1 - (1 + r) ** -n);
+}
+
+function balanceAfter(balance: number, annualRate: number, years: number, months: number): number {
+  const r = annualRate / 12;
+  const pay = monthlyPayment(balance, annualRate, years);
+  return balance * (1 + r) ** months - (pay * ((1 + r) ** months - 1)) / r;
+}
+
+export interface MortgageOutlook {
+  fixEnds: string;
+  current: number;
+  low: number;
+  high: number;
+  rateLow: number;
+  rateHigh: number;
+  balanceAtEnd: number;
+  bankRate: number;
+}
+
+/**
+ * When a fixed rate ends, the payment is re-worked from the balance left,
+ * the years left and a new rate: Bank Rate plus a typical lender margin,
+ * given as a range rather than a guess at one number.
+ */
+function mortgageOutlook(profile: Profile, world: World, asOf: Date): MortgageOutlook | null {
+  const m = profile.mortgage;
+  if (!m) return null;
+  const fixEnds = parseIso(m.fixEnds);
+  if (fixEnds < asOf) return null;
+  const months = Math.max(0, Math.round(daysBetween(asOf, fixEnds) / 30.44));
+  const balanceAtEnd = balanceAfter(m.balance, m.rate, m.yearsLeft, months);
+  const yearsLeft = m.yearsLeft - months / 12;
+  const rateLow = world.bankRate + MORTGAGE_MARGIN.low;
+  const rateHigh = world.bankRate + MORTGAGE_MARGIN.high;
+  return {
+    fixEnds: m.fixEnds,
+    current: monthlyPayment(m.balance, m.rate, m.yearsLeft),
+    low: monthlyPayment(balanceAtEnd, rateLow, yearsLeft),
+    high: monthlyPayment(balanceAtEnd, rateHigh, yearsLeft),
+    rateLow,
+    rateHigh,
+    balanceAtEnd,
+    bankRate: world.bankRate,
   };
 }
 

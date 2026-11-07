@@ -29,7 +29,7 @@ export default function Home() {
               Get my forecast
             </Link>
             <Link
-              href="/forecast/dev"
+              href="/forecast/sam"
               className="rounded-full border border-white/60 px-6 py-3 font-semibold hover:bg-white/10"
             >
               See a demo

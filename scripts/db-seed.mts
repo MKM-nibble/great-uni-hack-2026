@@ -5,7 +5,7 @@ import { Pool, type PoolClient } from '@neondatabase/serverless';
 import { CATEGORY_LABEL } from '@/forecast/categorise';
 import { JOB_TEMPLATES } from '@/data/jobs';
 import { FESTIVALS } from '@/data/calendar';
-import { CPI_ANNUAL, CPI_SOURCE, RATE_DECISIONS, RATE_SOURCE, SCHEDULED_CHANGES } from '@/data/prices';
+import { BANK_RATE, CPI_ANNUAL, CPI_SOURCE, RATE_DECISIONS, RATE_SOURCE, SCHEDULED_CHANGES } from '@/data/prices';
 import { getPersonas } from '@/data/personas';
 import {
   DRIVERS, DRIVER_KEYWORDS, EXTRA_POLICY_CHANGES, IMPACT_RULES, JOB_WEATHER_EFFECTS,
@@ -120,7 +120,10 @@ try {
     c,
     'market_points',
     ['series_id', 'date'],
-    Object.entries(CPI_ANNUAL).map(([cat, v]) => ({ series_id: `cpi_${cat}`, date: snapshot, value: v })),
+    [
+      ...Object.entries(CPI_ANNUAL).map(([cat, v]) => ({ series_id: `cpi_${cat}`, date: snapshot, value: v })),
+      { series_id: 'boe_bank_rate', date: BANK_RATE.asOf, value: BANK_RATE.value * 100 },
+    ],
   );
 
   await upsert(c, 'drivers', ['id'], DRIVERS);

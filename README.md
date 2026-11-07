@@ -81,25 +81,27 @@ For example: "You spend about £48 a month on coffee. Coffee prices are forecast
 
 ## Demo personas (one switcher)
 
+The demo is built around **Sam** and **Amira**. Dev and Kayla stay in the switcher for questions.
+
 | Persona | Pay type | The storm Stagger catches |
 | --- | --- | --- |
-| **Sam, 29**, office worker *(baseline)* | Salaried | Energy price cap rise + a friend's wedding abroad |
-| **Dev, 34**, warehouse nights, 2 kids | Zero-hours | Peak season ends as Christmas and a birthday hit, then a January drought |
-| **Amira, 41**, plumber | Self-employed | 31 Jan self-assessment tax + payment on account, late invoices, Eid |
-| **Kayla, 19**, student, bar shifts | Student | Loan runs out in week 9 of term, and a Spotify-found gig she'll want |
-
-**Memorable moment: the backtest.** Rewind Dev's last 12 months: Stagger *would have* warned
-him 6 weeks before he went overdrawn, and paying himself a salary would have avoided it.
+| **Sam, 31**, software engineer, Leeds, one child *(demo)* | Salaried | Mortgage fix (1.89%) ends 1 Apr: +£273–£371/month at today's Bank Rate. The March bonus hides it; the 1-year view shows him overdrawn by August |
+| **Amira, 41**, plumber, Sheffield *(demo)* | Self-employed | 31 Jan tax bill, live heavy-rain days cutting outdoor work, late invoices, then Eid |
+| **Dev, 34**, warehouse nights, 2 kids | Zero-hours | Peak season ends as Christmas hits, then a January drought. The rewind shows Stagger warning him 17 weeks early |
+| **Kayla, 19**, student, bar shifts | Student | Loan runs out before the 12 Jan instalment; bus fare changes; a Spotify-found gig |
 
 ## Suggested demo (3 min)
 
-1. (15s) Sam: "works for everyone": a price-cap card and a wedding on the timeline.
-2. (15s) "But for Dev, budgeting apps don't work."
-3. (40s) Onboard Dev live: job + "zero-hours", and the income forecast switches on.
-4. (60s) Time machine: danger zone, why, pay-yourself-a-salary, a what-if drag.
-5. (30s) Backtest rewind: "would have warned him 6 weeks early."
-6. (10s) Quick flick to Amira (tax) and Kayla (Spotify gig).
-7. (10s) What's real, what's mocked, and how it plugs into NatWest.
+1. (20s) **The problem.** Budgeting apps look backwards and assume a steady salary. Real life doesn't work like that.
+2. (60s) **Sam, the well-paid engineer.** Six months looks fine and the coach says "fine for now". Switch to **1 year**:
+   the mortgage fix ends in April, the bonus hides it for a few months, and he's overdrawn by August.
+   Tap *Why?* to show Bank Rate + lender margin. Then the what-ifs: **lock a rate now** + **pause the ISA**, and
+   balance in a year goes from −£541 to +£2,600. Line: *this works for everyone, not just people in trouble.*
+3. (60s) **Amira, the plumber.** Same engine, different storm: the January tax bill, plus *live* weather.
+   "Heavy rain on 11–12 Nov: about −£63 pay" comes from today's forecast for Sheffield. Show **pay yourself a salary**.
+4. (20s) **Rewind a year** (Dev, or whoever is on screen): "Stagger would have warned him 17 weeks early."
+5. (20s) **Honesty.** Live data from Neon (news, weather, rates), a person approves every news signal,
+   demo transactions are synthetic, and nothing personal is stored. In NatWest, setup is zero steps.
 
 ## Running it
 
@@ -168,6 +170,7 @@ On Vercel, `vercel.json` runs the weather and headline jobs daily.
 
 ### Before the demo checklist
 
+- [ ] Check Bank Rate (`BANK_RATE` in `src/data/prices.ts`, `boe_bank_rate` in the database) and the lender margin range
 - [ ] Check every row in `policy_changes` and `rate_decisions` against its source, then set `verified_at` (cards say "not yet verified" until then)
 - [ ] Run `pnpm db:ingest headlines` and `weather` on demo morning, and review signals in `/admin`
 - [ ] Check festival dates in `src/data/calendar.ts`

@@ -47,7 +47,7 @@ export function Dashboard({ id }: { id: PersonaId | 'me' }) {
 }
 
 function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: Persona; profile: Profile; now: Date }) {
-  const [horizon, setHorizon] = useState<90 | 180>(180);
+  const [horizon, setHorizon] = useState<90 | 180 | 365>(180);
   const [active, setActive] = useState<string[]>([]);
   const [view, setView] = useState<View>('forecast');
   const [scrub, setScrub] = useState(0);
@@ -58,7 +58,7 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
   );
   const world = useWorld(profile);
   const input: ForecastInput = useMemo(
-    () => ({ profile, transactions: persona.transactions, balance: persona.balance, asOf: now, world }),
+    () => ({ profile, transactions: persona.transactions, balance: persona.balance, asOf: now, world, horizonDays: 365 }),
     [profile, persona, now, world],
   );
   const base = useMemo(() => forecast(input), [input]);
@@ -140,6 +140,7 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
                 options={[
                   [90, '3 months'],
                   [180, '6 months'],
+                  [365, '1 year'],
                 ]}
                 onChange={(v) => {
                   setHorizon(v);
@@ -249,11 +250,15 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
           </div>
           {chosen.length > 0 && (
             <p className="mt-3 text-sm">
-              Lowest point moves from <b>{fmtMoney(base.lowPoint.expected)}</b> to{' '}
+              Lowest point in 6 months: <b>{fmtMoney(base.lowPoint.expected)}</b> →{' '}
               <b className={f.lowPoint.expected >= base.lowPoint.expected ? 'text-nw-green' : 'text-nw-red'}>
                 {fmtMoney(f.lowPoint.expected)}
               </b>
-              .
+              <span className="mx-2 text-nw-line">|</span>
+              Balance in a year: <b>{fmtMoney(base.days.at(-1)!.expected)}</b> →{' '}
+              <b className={f.days.at(-1)!.expected >= base.days.at(-1)!.expected ? 'text-nw-green' : 'text-nw-red'}>
+                {fmtMoney(f.days.at(-1)!.expected)}
+              </b>
             </p>
           )}
         </Card>

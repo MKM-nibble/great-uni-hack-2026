@@ -1,5 +1,6 @@
 import type { Category, Confidence, PayType } from '@/lib/types';
 import {
+  BANK_RATE,
   CPI_ANNUAL,
   NEWS_SIGNALS,
   RATE_DECISIONS,
@@ -56,6 +57,8 @@ export interface World {
   cpi: Partial<Record<Category, number>>;
   signals: Signal[];
   rates: { date: string; expectation: string; confidence: Confidence }[];
+  /** Bank Rate today, e.g. 0.0375. */
+  bankRate: number;
   weather: {
     days: WeatherDay[];
     effects: { condition: WeatherCondition; effect: number; note: string }[];
@@ -81,6 +84,7 @@ export const SNAPSHOT_WORLD: World = {
     example: s.example,
   })),
   rates: RATE_DECISIONS,
+  bankRate: BANK_RATE.value,
   weather: { days: [], effects: [] },
 };
 

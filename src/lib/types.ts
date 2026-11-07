@@ -13,6 +13,7 @@ export type PayType =
 export type Category =
   | 'income'
   | 'rent'
+  | 'mortgage'
   | 'energy'
   | 'council-tax'
   | 'groceries'
@@ -63,6 +64,8 @@ export interface Profile {
   connections: { spotify: boolean; calendar: boolean };
   festivals: string[];
   personalEvents: LifeEvent[];
+  /** Fixed-rate mortgage details (in production, read from the NatWest mortgage account). */
+  mortgage?: { balance: number; rate: number; fixEnds: string; yearsLeft: number };
   /** First part of the postcode (e.g. "LS6"), for local weather, fares and prices. */
   postcode?: string;
   /** Which seeded account the demo reads transactions from. */
@@ -78,6 +81,10 @@ export interface WhatIf {
   label: string;
   /** Extra money in (positive) or out (negative), by ISO date. */
   flows: { date: string; amount: number }[];
+  /** Regular payments to stop, by merchant name (e.g. a savings transfer). */
+  pauseBills?: string[];
+  /** Lock a new mortgage rate now, at the hopeful end of today's range. */
+  mortgageLock?: boolean;
   /** Multiplier applied to a spending category for the whole horizon. */
   categoryScale?: { category: Category; factor: number };
 }

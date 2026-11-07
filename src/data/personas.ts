@@ -90,30 +90,37 @@ function personal(id: string, date: string, label: string, amount: number, sourc
   return { id, date, label, amount, source };
 }
 
-// Sam: salaried baseline.
+// Sam: salaried software engineer. A good salary, but a young family, nursery
+// fees, and a cheap five-year mortgage fix that ends in April.
+const SAM_MORTGAGE = { balance: 214_000, rate: 0.0189, fixEnds: '2027-04-01', yearsLeft: 26 };
+
 function sam(): Persona {
-  const { txns, balance } = generate(11, 1850, (d, l, r) => {
-    if (dom(d) === 28) l.credit(d, 2150, 'BRIGHTWELL INSURANCE SALARY');
-    if (dom(d) === 1) l.debit(d, 895, 'RENT - CASTLE LETTINGS', '6513');
-    if (dom(d) === 3) l.debit(d, 180, 'NORTHERN RAIL SEASON TICKET', '4111');
-    if (dom(d) === 5) l.debit(d, 85, 'OCTOPUS ENERGY', '4900');
-    if (dom(d) === 15 && month(d) !== 2 && month(d) !== 3) l.debit(d, 125, 'LEEDS CITY COUNCIL TAX', '9311');
-    if (dom(d) === 20) l.debit(d, 22, 'VODAFONE', '4814');
+  const { txns, balance } = generate(11, 3200, (d, l, r) => {
+    if (dom(d) === 28) l.credit(d, 3350, 'NORTHSTACK LTD SALARY');
+    if (isDay(d, 3, 28)) l.credit(d, 2400, 'NORTHSTACK LTD BONUS');
+    if (dom(d) === 1) l.debit(d, 868, 'NATWEST MORTGAGE', '6012');
+    if (dom(d) === 1) l.debit(d, 740, 'BRIGHT START NURSERY', '8351');
+    if (dom(d) === 10) l.debit(d, 265, 'BLACK HORSE CAR FINANCE', '6141');
+    if (dom(d) === 29) l.debit(d, 250, 'TRANSFER TO ISA', '6012');
+    if (dom(d) === 5) l.debit(d, 140, 'OCTOPUS ENERGY', '4900');
+    if (dom(d) === 15 && month(d) !== 2 && month(d) !== 3) l.debit(d, 165, 'LEEDS CITY COUNCIL TAX', '9311');
+    if (dom(d) === 20) l.debit(d, 48, 'VIRGIN MEDIA', '4814');
     if (dom(d) === 12) l.debit(d, 10.99, 'NETFLIX', '4899');
-    if (dom(d) === 18) l.debit(d, 11.99, 'SPOTIFY', '4899');
+    if (dom(d) === 18) l.debit(d, 19.99, 'SPOTIFY', '4899');
     if (dom(d) === 2) l.debit(d, 30, 'PUREGYM', '7997');
-    if (dom(d) === 29) l.debit(d, 350, 'TRANSFER TO SAVINGS', '6012');
-    if (dow(d) === 6) l.debit(d, between(r, 45, 65), 'SAINSBURYS', '5411');
+    if (dom(d) % 10 === 0) l.debit(d, between(r, 38, 52), 'SHELL', '5541');
+    if (dow(d) === 6) l.debit(d, between(r, 85, 105), 'TESCO', '5411');
     if (dow(d) >= 1 && dow(d) <= 4 && r() < 0.8) l.debit(d, between(r, 3.1, 3.8), 'COSTA COFFEE', '5814');
-    if (dow(d) === 5 && r() < 0.8) l.debit(d, between(r, 20, 45), 'DISHOOM', '5812');
-    if (month(d) === 12 && dom(d) >= 1 && dom(d) <= 22 && r() < 0.3) l.debit(d, between(r, 25, 70), 'JOHN LEWIS', '5311');
+    if (dow(d) === 5 && r() < 0.8) l.debit(d, between(r, 35, 70), 'DISHOOM', '5812');
+    if (r() < 0.25) l.debit(d, between(r, 15, 60), 'AMAZON', '5942');
+    if (month(d) === 12 && dom(d) <= 22 && r() < 0.35) l.debit(d, between(r, 30, 90), 'JOHN LEWIS', '5311');
   });
   return {
     id: 'sam',
     name: 'Sam',
-    age: 29,
-    blurb: 'Office worker, salaried',
-    storm: 'Energy price cap rise and a friend’s wedding abroad',
+    age: 31,
+    blurb: 'Software engineer, salaried, one child',
+    storm: 'Mortgage fix ends in April, on top of nursery fees',
     balance,
     transactions: txns,
     gigs: [],
@@ -121,11 +128,14 @@ function sam(): Persona {
       name: 'Sam',
       account: 'sam',
       postcode: 'LS6',
-      job: 'Claims handler',
+      household: 'kids',
+      housing: 'mortgage',
+      job: 'Software engineer',
       payType: 'salaried',
       festivals: ['christmas'],
       personalEvents: [personal('wedding', '2027-02-19', 'Ana’s wedding in Lisbon', 650, 'calendar')],
       connections: { spotify: false, calendar: true },
+      mortgage: SAM_MORTGAGE,
     }),
   };
 }
@@ -282,11 +292,12 @@ export function getPersonas(): Record<PersonaId, Persona> {
   return cache;
 }
 
-export const PERSONA_ORDER: PersonaId[] = ['sam', 'dev', 'amira', 'kayla'];
+// Sam and Amira first: they are the two the demo is built around.
+export const PERSONA_ORDER: PersonaId[] = ['sam', 'amira', 'dev', 'kayla'];
 
 /** Static details for menus, safe to render on the server. */
 export const PERSONA_META: Record<PersonaId, { name: string; age: number; blurb: string; storm: string }> = {
-  sam: { name: 'Sam', age: 29, blurb: 'Office worker, salaried', storm: 'Energy price rise and a wedding abroad' },
+  sam: { name: 'Sam', age: 31, blurb: 'Software engineer, salaried, one child', storm: 'Mortgage fix ends in April' },
   dev: { name: 'Dev', age: 34, blurb: 'Warehouse nights, zero-hours, two kids', storm: 'Christmas, then a January drought' },
   amira: { name: 'Amira', age: 41, blurb: 'Self-employed plumber', storm: 'January tax bill and late-paying clients' },
   kayla: { name: 'Kayla', age: 19, blurb: 'Student with a loan and bar shifts', storm: 'Loan runs out before the next one lands' },

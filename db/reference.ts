@@ -35,6 +35,7 @@ export const JOB_WEATHER_EFFECTS = [
 export const MERCHANT_RULES = [
   { pattern: 'COUNCIL TAX', category: 'council-tax', priority: 10 },
   { pattern: 'HMRC', category: 'tax', priority: 10 },
+  { pattern: 'MORTGAGE', category: 'mortgage', priority: 10 },
   { pattern: 'COSTA|STARBUCKS|PRET|CAFFE NERO', category: 'coffee', priority: 20 },
   { pattern: 'FIRST BUS|STAGECOACH|ARRIVA|GO AHEAD|NATIONAL EXPRESS|TFL', category: 'public-transport', priority: 20 },
   { pattern: 'SHELL|BP |ESSO|TEXACO|JET |MFG', category: 'fuel', priority: 20 },

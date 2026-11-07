@@ -15,7 +15,7 @@ export function Header() {
           <Link href="/start" className="hover:underline">
             Get started
           </Link>
-          <Link href="/forecast/dev" className="hidden hover:underline sm:inline">
+          <Link href="/forecast/sam" className="hidden hover:underline sm:inline">
             Demo
           </Link>
         </nav>

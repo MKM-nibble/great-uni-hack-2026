@@ -26,6 +26,7 @@ export function categorise(t: ObTransaction): Category {
   const name = t.TransactionInformation.toUpperCase();
   if (name.includes('COUNCIL TAX')) return 'council-tax';
   if (name.includes('HMRC')) return 'tax';
+  if (name.includes('MORTGAGE')) return 'mortgage';
   if (/COSTA|STARBUCKS|PRET|CAFFE NERO/.test(name)) return 'coffee';
   const mcc = t.MerchantDetails?.MerchantCategoryCode;
   if (mcc === '5814') return 'eating-out';
@@ -35,6 +36,7 @@ export function categorise(t: ObTransaction): Category {
 export const CATEGORY_LABEL: Record<Category, string> = {
   income: 'Income',
   rent: 'Rent',
+  mortgage: 'Mortgage',
   energy: 'Energy',
   'council-tax': 'Council tax',
   groceries: 'Groceries',

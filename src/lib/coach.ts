@@ -28,6 +28,13 @@ export function coachSummary(profile: Profile, f: Forecast, salary: SalaryPlan |
     cautiousRiskFrom: f.firstRisk,
     usualWeeklyPay: f.income.variable ? Math.round(f.income.weeklyBase) : null,
     salaryPlan: salary ? { weekly: salary.weekly, potSize: salary.seedBuffer } : null,
+    mortgage: f.mortgage
+      ? {
+          fixEnds: f.mortgage.fixEnds,
+          paymentNow: Math.round(f.mortgage.current),
+          paymentAfter: [Math.round(f.mortgage.low), Math.round(f.mortgage.high)],
+        }
+      : null,
     upcoming: insights
       .filter((i) => i.kind !== 'support')
       .slice(0, 6)
@@ -65,6 +72,25 @@ export function rulesCoach(profile: Profile, f: Forecast, salary: SalaryPlan | n
       detail: 'Your interest-free student overdraft can bridge it, so check your limit now rather than in January.',
     });
   }
+  if (f.mortgage) {
+    const extra = (f.mortgage.low + f.mortgage.high) / 2 - f.mortgage.current;
+    actions.push({
+      title: `Look at new mortgage deals before ${fmtDate(f.mortgage.fixEnds)}`,
+      detail: 'Many lenders let you lock a rate months ahead, so a later rise can’t catch you out.',
+    });
+    const bonus = f.income.regular.find((r) => /bonus/i.test(r.payer) && r.next.length);
+    actions.push(
+      bonus
+        ? {
+            title: 'Keep your March bonus for April',
+            detail: `It covers about ${Math.floor(bonus.amount / extra)} months of the higher mortgage payment while you adjust.`,
+          }
+        : {
+            title: `Find about ${fmtMoney(extra)} a month before the fix ends`,
+            detail: 'Starting now spreads the change instead of it landing all at once.',
+          },
+    );
+  }
   const event = insights.find((i) => i.kind === 'event' && !i.id.includes('self-assessment'));
   if (event && actions.length < 3) {
     actions.push({
@@ -85,8 +111,11 @@ export function rulesCoach(profile: Profile, f: Forecast, salary: SalaryPlan | n
     });
   }
 
+  const m = f.mortgage;
   const headline = danger
     ? `Heads up: money gets tight around ${fmtDate(danger)}. Here’s how to get ahead of it.`
-    : `You’re on track. Your lowest point is ${fmtMoney(f.lowPoint.expected)} on ${fmtDate(f.lowPoint.date)}.`;
+    : m
+      ? `You’re fine for now, but your mortgage goes up about ${fmtMoney((m.low + m.high) / 2 - m.current)} a month from ${fmtDate(m.fixEnds)}.`
+      : `You’re on track. Your lowest point is ${fmtMoney(f.lowPoint.expected)} on ${fmtDate(f.lowPoint.date)}.`;
   return { headline, actions: actions.slice(0, 3), source: 'rules' };
 }

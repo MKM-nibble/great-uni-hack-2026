@@ -1,6 +1,6 @@
 import { hasDb, sql } from '@/lib/db';
 import type { Category, Confidence, PayType } from '@/lib/types';
-import type { PriceChange } from '@/data/prices';
+import { BANK_RATE, type PriceChange } from '@/data/prices';
 import type { IncomeChange, Signal, WeatherCondition, World } from '@/data/world';
 
 // Everything outside the customer's account that matters to them: price and
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     order by length(p.area) desc limit 1`) as { id: string; name: string }[];
   const regionId = region?.id ?? null;
 
-  const [policies, cpi, signals, rates, weather, effects] = await Promise.all([
+  const [policies, cpi, signals, rates, weather, effects, bankRate] = await Promise.all([
     db`select * from policy_changes
        where effective_date >= current_date - 30
          and (applies_to_regions is null or ${regionId}::text = any(applies_to_regions))
@@ -61,6 +61,7 @@ export async function GET(request: Request) {
       ? db`select * from weather_daily where region_id = ${regionId} and date >= current_date and is_forecast order by date`
       : Promise.resolve([]),
     db`select condition, effect, note from job_weather_effects where job_template_id = ${job}`,
+    db`select value from market_points where series_id = 'boe_bank_rate' order by date desc limit 1`,
   ]);
 
   const verifiedNote = (p: Record<string, unknown>) => (p.verified_at ? '' : ' (not yet verified)');
@@ -117,6 +118,7 @@ export async function GET(request: Request) {
       expectation: String(r.expectation ?? 'Decision due'),
       confidence: r.confidence as Confidence,
     })),
+    bankRate: bankRate[0] ? Number(bankRate[0].value) / 100 : BANK_RATE.value,
     weather: {
       days: weather.map((w) => ({
         date: iso(w.date),

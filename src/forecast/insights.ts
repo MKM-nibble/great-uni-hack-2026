@@ -30,7 +30,7 @@ export function worldInsights(profile: Profile, f: Forecast): Insight[] {
   const spend = (c: Category) => f.monthlySpend[c] ?? 0;
   const out: Insight[] = [];
   const asOf = parseIso(f.asOf);
-  const end = parseIso(f.days[f.days.length - 1].date);
+  const end = parseIso(f.statsEnd);
 
   for (const c of w.scheduled) {
     if (parseIso(c.date) > end || spend(c.category) <= 0) continue;
@@ -134,16 +134,41 @@ export function worldInsights(profile: Profile, f: Forecast): Insight[] {
     });
   }
 
+  const m = f.mortgage;
+  if (m) {
+    const [up, upHigh] = [m.low - m.current, m.high - m.current];
+    const rate = (x: number) => `${(x * 100).toFixed(2)}%`;
+    out.push({
+      id: 'mortgage',
+      kind: 'warning',
+      title: `Your mortgage fix ends ${fmtDate(m.fixEnds)}: about ${fmtMoney(up)} to ${fmtMoney(upHigh)} more a month`,
+      body: `From about ${fmtMoney(m.current)} to ${fmtMoney(m.low)}–${fmtMoney(m.high)} a month, or ${fmtMoney(up * 12)}–${fmtMoney(upHigh * 12)} a year. Many lenders let you lock in a new deal up to six months before.`,
+      date: m.fixEnds,
+      confidence: 'likely',
+      why: [
+        `Your current rate is ${rate(profile.mortgage!.rate)}, with about ${fmtMoney(m.balanceAtEnd)} left to repay when the fix ends`,
+        `Bank Rate is ${rate(m.bankRate)} today; new fixes usually sit about ${rate(m.rateLow - m.bankRate)}–${rate(m.rateHigh - m.bankRate)} above it`,
+        `So a new rate of roughly ${rate(m.rateLow)}–${rate(m.rateHigh)}, over the same remaining term`,
+        'A Bank Rate cut before you fix would bring the new payment down',
+      ],
+      source: RATE_SOURCE,
+    });
+  }
+
   const nextRate = w.rates.find((r) => parseIso(r.date) >= asOf);
   if (nextRate) {
     out.push({
       id: 'rate',
       kind: 'rate',
       title: `Bank of England decision on ${fmtDate(nextRate.date)}`,
-      body: `${nextRate.expectation}. This moves overdraft, credit card and savings rates, not most everyday bills.`,
+      body: m
+        ? `${nextRate.expectation}. This matters to you: it moves the rate you'll be offered when your fix ends.`
+        : `${nextRate.expectation}. This moves overdraft, credit card and savings rates, not most everyday bills.`,
       date: nextRate.date,
       confidence: nextRate.confidence,
-      why: ['Shown for awareness; it has a small effect on your forecast'],
+      why: m
+        ? ['New fixed rates follow where Bank Rate is expected to go', `Your fix ends ${fmtDate(m.fixEnds)}`]
+        : ['Shown for awareness; it has a small effect on your forecast'],
       source: RATE_SOURCE,
     });
   }
@@ -178,16 +203,19 @@ export function buildInsights(profile: Profile, f: Forecast): Insight[] {
     out.push({
       id: 'clear',
       kind: 'good',
-      title: 'No storms ahead',
-      body: `Your balance stays above ${fmtMoney(Math.max(0, low.low))} for the next six months, even in a cautious case.`,
+      title: f.mortgage ? `Fine for now, but ${fmtDate(f.mortgage.fixEnds)} changes things` : 'No storms ahead',
+      body: f.mortgage
+        ? `Your balance stays above ${fmtMoney(Math.max(0, low.low))} for six months, but your mortgage payment goes up when the fix ends. Switch to the 1-year view to see it.`
+        : `Your balance stays above ${fmtMoney(Math.max(0, low.low))} for the next six months, even in a cautious case.`,
       confidence: 'likely',
       why: ['Regular income covers your bills and usual spending', ...f.events.slice(0, 2).map((e) => `${e.label} is already included`)],
     });
   }
 
-  const bigEvents = f.events.filter((e) => e.amount >= 100);
+  const soon = f.events.filter((e) => e.date <= f.statsEnd);
+  const bigEvents = soon.filter((e) => e.amount >= 100);
   for (const e of dedupeByLabel(bigEvents).slice(0, 3)) {
-    const total = f.events.filter((x) => x.label === e.label).reduce((s, x) => s + x.amount, 0);
+    const total = soon.filter((x) => x.label === e.label).reduce((s, x) => s + x.amount, 0);
     out.push({
       id: `event-${e.id}`,
       kind: 'event',
@@ -266,6 +294,22 @@ export function whatIfsFor(profile: Profile, f: Forecast, asOf: Date, gigs: GigS
       flows: [{ date: next(2), amount: -price }],
     });
   }
+  for (const b of f.bills.filter((b) => /SAVINGS|ISA/.test(b.merchant))) {
+    out.push({
+      id: `pause-${b.merchant}`,
+      label: `Pause your ${fmtMoney(b.amount)} monthly savings transfer`,
+      flows: [],
+      pauseBills: [b.merchant],
+    });
+  }
+  if (f.mortgage) {
+    out.push({
+      id: 'mortgage-lock',
+      label: `Lock a new mortgage rate now (≈${fmtMoney(f.mortgage.low)}/month)`,
+      flows: [],
+      mortgageLock: true,
+    });
+  }
   if ((f.monthlySpend['eating-out'] ?? 0) > 40) {
     out.push({
       id: 'takeaways',
@@ -282,5 +326,5 @@ export function whatIfsFor(profile: Profile, f: Forecast, asOf: Date, gigs: GigS
       categoryScale: { category: 'coffee', factor: 0.4 },
     });
   }
-  return out.filter((w) => w.flows.length || w.categoryScale);
+  return out.filter((w) => w.flows.length || w.categoryScale || w.mortgageLock || w.pauseBills?.length);
 }
