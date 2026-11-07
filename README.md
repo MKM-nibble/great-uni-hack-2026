@@ -101,21 +101,65 @@ him 6 weeks before he went overdrawn, and paying himself a salary would have avo
 6. (10s) Quick flick to Amira (tax) and Kayla (Spotify gig).
 7. (10s) What's real, what's mocked, and how it plugs into NatWest.
 
+## Running it
+
+```bash
+pnpm install
+pnpm dev            # http://localhost:3000
+```
+
+The app works fully **without an API key**: coaching falls back to built-in rules. To turn on
+the AI coach, copy `.env.example` to `.env.local` and add `ANTHROPIC_API_KEY`.
+
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Run the app locally |
+| `pnpm build` | Production build (run it before pushing) |
+| `pnpm lint` / `pnpm typecheck` | Checks |
+| `pnpm inspect` | Print each persona's forecast, salary plan and backtest in the terminal |
+| `pnpm precompute` | With `pnpm dev` running: pre-generate AI coaching for the 4 demo customers into `src/data/coach-cache.json`. **Run on demo morning and commit**, so the demo makes no live calls |
+| `pnpm news` | Turn real headlines in `scripts/headlines.txt` into price signals (check them, then paste into `src/data/prices.ts`) |
+
+### Before the demo checklist
+
+- [ ] Check every figure in `src/data/prices.ts` (Ofgem cap, council tax, phone rises, CPI, BoE dates) against its source
+- [ ] Replace the **example** news signals with real ones (`pnpm news`)
+- [ ] Check festival dates in `src/data/calendar.ts`
+- [ ] Drop NatWest's official logo into `public/` and swap it into `src/components/Header.tsx`
+- [ ] `pnpm precompute` (add `LANGUAGES=English,Polski` to pre-generate more languages) and commit the cache
+
+## Code map
+
+| Path | What's there |
+| --- | --- |
+| `src/forecast/engine.ts` | The forecast: bill detection, income model with seasonality, festival learning, price adjustments, daily balance with a likely range, safe-to-spend, salary plan, one-year backtest |
+| `src/forecast/insights.ts` | Turns a forecast into cards (each with "why" and a source) and what-if options |
+| `src/forecast/categorise.ts` | Transaction categories from merchant codes and keywords |
+| `src/data/personas.ts` | The 4 demo customers: 24 months of synthetic Open Banking-shaped transactions each |
+| `src/data/jobs.ts` | Pay types and seasonal income templates per kind of job |
+| `src/data/prices.ts` | Scheduled price changes, CPI by category, BoE dates, news signals |
+| `src/data/calendar.ts` | Festivals, learned festival spending, the self-assessment tax rule |
+| `src/lib/claude.ts` | The only code that calls Claude (coach + job matching), with memo cache |
+| `src/lib/spend-guard.ts` | Hard cap on live Claude calls per server (`STAGGER_MAX_CALLS`, default 150) |
+| `src/app/start` | 3-screen onboarding (saved in the browser only) |
+| `src/components/Dashboard.tsx` | The Time Machine screen |
+
 ## Tech
 
-- **Next.js + TypeScript + Tailwind**, one app, deployed on Vercel.
-- `forecast/`: pure TS engine (income model, seasonal templates, bills, events, price and
-  rate adjustments, confidence band). No AI, and unit-testable.
-- `data/`: persona transactions, price/rate calendar, CPI snapshot, cached news signals, job templates (JSON).
-- `/api/coach`, `/api/onboard`: server routes that call Claude. The **API key stays server-side** in `.env.local`, never committed.
+- **Next.js 16 + TypeScript + Tailwind 4**, one app; deploys to Vercel as-is.
+- The forecast runs **in the browser**: pure TypeScript, no AI.
+- `/api/coach` and `/api/job` are the only server routes that call Claude. The **API key stays server-side** in `.env.local`, never committed.
+- Claude only ever sees a ~300-token summary (pay type, job, a few totals and dates), never transactions.
 
 ### Claude budget (~$25): rules
 
-- Claude does only three things: tidy up the free-text job answer, extract the news signals
-  (once, cached), and write the plain-English coaching.
-- **Pre-generate and cache** everything for the four personas. The demo needs no live calls.
-- Small model for extraction, bigger model only for coaching; short prompts; cap `max_tokens`.
-- Build against mock responses; switch the real API on last.
+- Claude does only three things: match a job the keyword rules don't recognise, extract the
+  news signals (once, cached), and write the plain-English coaching (in 7 languages).
+- **Nothing calls Claude on page load.** Demo customers load pre-generated coaching from
+  `coach-cache.json`; anything else waits for someone to tap "Ask Stagger AI".
+- Default model is `claude-opus-5-5` at low effort. One coaching call is roughly 1–2p.
+  If credits run low, set `STAGGER_MODEL=claude-haiku-5-5` in `.env.local`.
+- Answers are cached in memory, and `STAGGER_MAX_CALLS` caps live calls per server.
 
 ## Design
 
