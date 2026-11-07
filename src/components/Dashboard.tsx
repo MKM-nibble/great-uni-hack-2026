@@ -3,16 +3,14 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { PersonaId, Profile } from '@/lib/types';
-import { getPersonas, PERSONA_META, PERSONA_ORDER, type Persona } from '@/data/personas';
-import { PAY_TYPES, JOB_TEMPLATES } from '@/data/jobs';
+import { getPersonas, type Persona } from '@/data/personas';
 import { backtest, forecast, salaryPlan, type ForecastInput } from '@/forecast/engine';
-import { buildInsights, whatIfsFor, type Insight } from '@/forecast/insights';
+import { buildInsights } from '@/forecast/insights';
 import { coachSummary, rulesCoach, LANGUAGES, type CoachAdvice, type Language } from '@/lib/coach';
 import { daysBetween, fmtDate, fmtMoney, parseIso, today } from '@/lib/dates';
 import { loadProfile } from '@/lib/profile-store';
-import { Card, ConfidencePill } from '@/components/ui';
+import { Card } from '@/components/ui';
 import { TimeMachineChart, eventsOn } from '@/components/TimeMachineChart';
-import { SalaryChart } from '@/components/SalaryChart';
 
 type View = 'forecast' | 'rewind';
 
@@ -47,23 +45,15 @@ export function Dashboard({ id }: { id: PersonaId | 'me' }) {
 
 function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: Persona; profile: Profile; now: Date }) {
   const [horizon, setHorizon] = useState<90 | 180>(180);
-  const [active, setActive] = useState<string[]>([]);
   const [view, setView] = useState<View>('forecast');
   const [scrub, setScrub] = useState(0);
 
-  const gigs = useMemo(
-    () => (profile.connections.spotify ? (persona.gigs.length ? persona.gigs : getPersonas().kayla.gigs) : []),
-    [profile, persona],
-  );
   const input: ForecastInput = useMemo(
     () => ({ profile, transactions: persona.transactions, balance: persona.balance, asOf: now }),
     [profile, persona, now],
   );
-  const base = useMemo(() => forecast(input), [input]);
-  const options = useMemo(() => whatIfsFor(profile, base, now, gigs), [profile, base, now, gigs]);
-  const chosen = useMemo(() => options.filter((o) => active.includes(o.id)), [options, active]);
-  const f = useMemo(() => (chosen.length ? forecast({ ...input, whatIfs: chosen }) : base), [input, base, chosen]);
-  const salary = useMemo(() => salaryPlan({ ...input, whatIfs: chosen }, f), [input, chosen, f]);
+  const f = useMemo(() => forecast(input), [input]);
+  const salary = useMemo(() => salaryPlan(input, f), [input, f]);
   const insights = useMemo(() => buildInsights(profile, f), [profile, f]);
   const rewind = useMemo(
     () => (view === 'rewind' ? backtest(profile, persona.transactions, persona.balance, now) : null),
@@ -73,23 +63,9 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
   const shown = view === 'rewind' && rewind ? rewind.predicted : f.days.slice(0, horizon);
   const point = shown[Math.min(scrub, shown.length - 1)];
   const markers = (view === 'rewind' ? [] : f.events).map((e) => ({ date: e.date, label: e.label }));
-  const payLabel = PAY_TYPES.find((p) => p.id === profile.payType)?.label;
 
   return (
     <div className="space-y-6">
-      <PersonaTabs current={id} />
-
-      <div>
-        <h1 className="text-2xl font-bold sm:text-3xl">Hi {profile.name === 'You' ? 'there' : profile.name}</h1>
-        <p className="mt-1 flex flex-wrap gap-2 text-sm text-nw-muted">
-          <Chip>{payLabel}</Chip>
-          {profile.job && <Chip>{profile.job}</Chip>}
-          {f.income.variable && <Chip>Pattern: {JOB_TEMPLATES[profile.jobTemplate].label}</Chip>}
-          {profile.connections.spotify && <Chip>Spotify connected</Chip>}
-          {profile.connections.calendar && <Chip>Calendar connected</Chip>}
-        </p>
-      </div>
-
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Balance today" value={fmtMoney(persona.balance)} />
         <Stat
@@ -111,7 +87,7 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
       </div>
 
       <Coach
-        cacheKey={id !== 'me' && !chosen.length ? id : undefined}
+        cacheKey={id !== 'me' ? id : undefined}
         rules={rulesCoach(profile, f, salary, insights)}
         summary={coachSummary(profile, f, salary, insights)}
       />
@@ -196,107 +172,8 @@ function Loaded({ id, persona, profile, now }: { id: PersonaId | 'me'; persona: 
         />
 
       </Card>
-
-      {view === 'forecast' && salary && (
-        <Card className="space-y-3">
-          <div>
-            <h2 className="text-lg font-bold">Pay yourself a salary: {fmtMoney(salary.weekly)} a week</h2>
-            <p className="text-sm text-nw-muted">
-              Your {profile.payType === 'student' ? 'loan and pay go' : 'pay goes'} into a Stagger pot, and the
-              same amount lands in your current account every week. Start the pot with about{' '}
-              {fmtMoney(salary.seedBuffer)} and it covers a run of slow weeks.
-            </p>
-            {salary.seedBuffer > persona.balance && (
-              <p className="rounded-lg bg-nw-amber/10 p-3 text-sm">
-                That’s more than the {fmtMoney(persona.balance)} you have today. The gap is exactly the tight spot
-                on your Time Machine, so it’s worth acting on now.
-              </p>
-            )}
-          </div>
-          <SalaryChart plan={salary} />
-        </Card>
-      )}
-
-      {view === 'forecast' && options.length > 0 && (
-        <Card>
-          <h2 className="mb-1 text-lg font-bold">What if…</h2>
-          <p className="mb-3 text-sm text-nw-muted">Tap to see how it changes your forecast.</p>
-          <div className="flex flex-wrap gap-2">
-            {options.map((o) => {
-              const on = active.includes(o.id);
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setActive(on ? active.filter((a) => a !== o.id) : [...active, o.id])}
-                  className={`rounded-full border px-4 py-2 text-sm ${
-                    on ? 'border-nw-purple bg-nw-purple text-white' : 'border-nw-line bg-white hover:border-nw-purple'
-                  }`}
-                >
-                  {on ? '✓ ' : '+ '}
-                  {o.label}
-                </button>
-              );
-            })}
-          </div>
-          {chosen.length > 0 && (
-            <p className="mt-3 text-sm">
-              Lowest point moves from <b>{fmtMoney(base.lowPoint.expected)}</b> to{' '}
-              <b className={f.lowPoint.expected >= base.lowPoint.expected ? 'text-nw-green' : 'text-nw-red'}>
-                {fmtMoney(f.lowPoint.expected)}
-              </b>
-              .
-            </p>
-          )}
-        </Card>
-      )}
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-bold">What’s coming up</h2>
-        {insights.map((i) => (
-          <InsightCard key={i.id} i={i} />
-        ))}
-      </section>
-
-      {(f.firstLikely || f.firstRisk) && <SupportRoutes />}
-
-      <Card className="text-sm text-nw-muted">
-        <h2 className="mb-2 font-semibold text-nw-ink">How Stagger works</h2>
-        <p>
-          The forecast is plain maths on your own transactions, the usual seasons for your work, your
-          dates, and published price changes. Every number has a reason you can tap. AI only writes the
-          coaching in plain words, and it sees a short summary, never your transactions.
-        </p>
-      </Card>
     </div>
   );
-}
-
-function PersonaTabs({ current }: { current: PersonaId | 'me' }) {
-  const tabs: [string, string][] = [...PERSONA_ORDER.map((p) => [p, PERSONA_META[p].name] as [string, string]), ['me', 'You']];
-  return (
-    <nav aria-label="Demo customers" className="-mx-4 overflow-x-auto px-4">
-      <div className="flex w-max gap-1 rounded-full bg-white p-1 shadow-sm">
-        {tabs.map(([id, name]) => (
-          <Link
-            key={id}
-            href={id === 'me' ? '/forecast/me' : `/forecast/${id}`}
-            aria-current={current === id ? 'page' : undefined}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
-              current === id ? 'bg-nw-purple text-white' : 'text-nw-muted hover:text-nw-purple'
-            }`}
-          >
-            {name}
-          </Link>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
-function Chip({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full bg-white px-3 py-1 shadow-sm">{children}</span>;
 }
 
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'warn' | 'bad' }) {
@@ -358,57 +235,6 @@ function RewindBanner({ name, b }: { name: string; b: ReturnType<typeof backtest
         {b.actualOverdrawn ? `${name} went overdrawn on ${fmtDate(b.actualOverdrawn)}.` : `${name} never went overdrawn.`}
       </p>
     </div>
-  );
-}
-
-function InsightCard({ i }: { i: Insight }) {
-  const [open, setOpen] = useState(false);
-  const accent = {
-    warning: 'border-l-nw-red',
-    price: 'border-l-nw-amber',
-    event: 'border-l-nw-purple',
-    salary: 'border-l-nw-teal',
-    support: 'border-l-nw-green',
-    rate: 'border-l-nw-muted',
-    good: 'border-l-nw-green',
-  }[i.kind];
-  return (
-    <Card className={`border-l-4 ${accent} !p-4`}>
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="font-semibold">{i.title}</h3>
-        <ConfidencePill c={i.confidence} />
-      </div>
-      <p className="mt-1 text-sm text-nw-muted">{i.body}</p>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className="mt-2 text-sm font-semibold text-nw-purple hover:underline"
-      >
-        {open ? 'Hide' : 'Why am I seeing this?'}
-      </button>
-      {open && (
-        <div className="mt-2 rounded-lg bg-nw-mist p-3 text-sm">
-          <ul className="list-disc space-y-1 pl-5">
-            {i.why.map((w) => (
-              <li key={w}>{w}</li>
-            ))}
-          </ul>
-          {i.source && (
-            <p className="mt-2 text-xs text-nw-muted">
-              Source:{' '}
-              {i.source.url ? (
-                <a href={i.source.url} target="_blank" rel="noreferrer" className="underline">
-                  {i.source.label}
-                </a>
-              ) : (
-                i.source.label
-              )}
-            </p>
-          )}
-        </div>
-      )}
-    </Card>
   );
 }
 
@@ -505,41 +331,6 @@ function Coach({ rules, summary, cacheKey }: { rules: CoachAdvice; summary: Retu
           {state === 'nokey' && ' · AI not set up on this server'}
           {state === 'error' && ' · AI unavailable, showing rules'}
         </span>
-      </div>
-    </section>
-  );
-}
-
-function SupportRoutes() {
-  const routes = [
-    {
-      title: 'Talk to NatWest',
-      body: 'Overdraft options, moving payment dates, or a break on repayments.',
-      url: 'https://www.natwest.com/support-centre/financial-support.html',
-    },
-    {
-      title: 'Check what benefits you can get',
-      body: 'Free, anonymous calculator. Many working people are entitled to more than they think.',
-      url: 'https://www.entitledto.co.uk/',
-    },
-    {
-      title: 'Free debt advice',
-      body: 'Including Breathing Space, which pauses interest and charges for 60 days.',
-      url: 'https://www.moneyhelper.org.uk/en/money-troubles/dealing-with-debt',
-    },
-  ];
-  return (
-    <section className="space-y-3">
-      <h2 className="text-lg font-bold">Support, before you need it</h2>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {routes.map((r) => (
-          <a key={r.title} href={r.url} target="_blank" rel="noreferrer" className="block">
-            <Card className="h-full !p-4 hover:border-nw-purple">
-              <h3 className="font-semibold text-nw-purple">{r.title} ↗</h3>
-              <p className="mt-1 text-sm text-nw-muted">{r.body}</p>
-            </Card>
-          </a>
-        ))}
       </div>
     </section>
   );

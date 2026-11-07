@@ -13,16 +13,16 @@ Christmas and weddings. But it's **built first for the people traditional tools 
 shift and zero-hours workers, the self-employed, and students. For them, the problem isn't
 overspending. It's **timing**: money comes in at different times from when bills go out.
 
-## How it works for the user (4 screens)
+## How it works for the user (3 steps, then the forecast)
 
-1. **About you:** household (alone / partner / kids), housing (rent / mortgage / family).
-   Big buttons, no typing.
-2. **Your work:** *what do you do?* (free text with suggestions: "warehouse operative",
-   "plumber", "nurse") plus *how are you paid?*: Salaried · Hourly / shifts · Zero-hours ·
-   Self-employed · Student · Not working / benefits.
-3. **Connect (all optional):** NatWest account (already connected), Spotify, Calendar.
-   Every connection shows what we read and why. There's always a "Skip".
-4. **Your Time Machine:** a 90-day forecast, danger zones, and 2–3 actions.
+1. **Your job:** *what do you do?* (free text with suggestions: "warehouse operative",
+   "plumber", "nurse").
+2. **How are you paid?** Salaried · Hourly / shifts · Zero-hours · Self-employed · Student ·
+   Not working / benefits.
+3. **Your calendar (optional, mocked):** connect a calendar and Stagger picks up upcoming
+   dates, events and trips. There's always a "Skip".
+
+Then **your Time Machine:** a 90-day forecast, danger zones, and 2–3 actions.
 
 ## What the app does with that: modules switch on from the answers
 
@@ -65,7 +65,7 @@ For example: "You spend about £48 a month on coffee. Coffee prices are forecast
 | --- | --- | --- |
 | NatWest account | Mocked | Seeded 12 months of transactions in **Open Banking JSON shape** |
 | Spotify → gigs | **Real if time allows**, cached fallback | Spotify top artists → Ticketmaster Discovery API (free key) for UK gigs → "Your top artist plays Manchester on 14 Mar, tickets usually £45–£70" |
-| Calendar | Real-ish | `.ics` upload or Google Calendar, plus festival chips (Christmas, Eid, Diwali, Lunar New Year…) |
+| Calendar | Mocked | A realistic connect flow (pick a provider, permissions, sync) that returns a fixed set of sample events. No real sign-in. `src/data/mock-calendar.ts` |
 | Other AI assistants | **Not built**: a "coming soon" tile only | No consumer API exists, and pulling someone's AI chat history into a bank is a privacy red flag for judges |
 
 ## MVP features (build these)
@@ -138,10 +138,11 @@ the AI coach, copy `.env.example` to `.env.local` and add `ANTHROPIC_API_KEY`.
 | `src/data/personas.ts` | The 4 demo customers: 24 months of synthetic Open Banking-shaped transactions each |
 | `src/data/jobs.ts` | Pay types and seasonal income templates per kind of job |
 | `src/data/prices.ts` | Scheduled price changes, CPI by category, BoE dates, news signals |
+| `src/data/mock-calendar.ts` | The mocked calendar provider list and sample events |
 | `src/data/calendar.ts` | Festivals, learned festival spending, the self-assessment tax rule |
 | `src/lib/claude.ts` | The only code that calls Claude (coach + job matching), with memo cache |
 | `src/lib/spend-guard.ts` | Hard cap on live Claude calls per server (`STAGGER_MAX_CALLS`, default 150) |
-| `src/app/start` | 3-screen onboarding (saved in the browser only) |
+| `src/app/start` | 3-step onboarding: job, pay type, calendar (saved in the browser only) |
 | `src/components/Dashboard.tsx` | The Time Machine screen |
 
 ## Tech

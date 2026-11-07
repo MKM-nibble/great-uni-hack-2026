@@ -11,14 +11,6 @@ export function Header() {
           <span className="h-5 w-px bg-white/40" aria-hidden />
           <span className="font-medium text-white/90">Stagger</span>
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/start" className="hover:underline">
-            Get started
-          </Link>
-          <Link href="/forecast/dev" className="hidden hover:underline sm:inline">
-            Demo
-          </Link>
-        </nav>
       </div>
     </header>
   );
