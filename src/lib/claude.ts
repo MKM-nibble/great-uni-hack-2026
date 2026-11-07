@@ -104,3 +104,34 @@ export async function claudeMatchJob(job: string): Promise<{ template: JobTempla
     JOB_SCHEMA,
   );
 }
+
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const CHAT_SYSTEM = `${COACH_SYSTEM}
+- You are chatting with the customer about their own forecast. Answer in 2-4 short sentences.
+- If they ask about something not in the summary, say you can't see that yet and suggest what they could check.
+- Never claim to move money or change anything in their account.`;
+
+/** A short chat about the customer's forecast. Sees the summary, never transactions. */
+export async function claudeChat(summary: CoachSummary, history: ChatTurn[], language: Language): Promise<string> {
+  const messages = history.slice(-8).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }));
+  const response = await getClient().beta.messages.create({
+    model: MODEL,
+    max_tokens: 1500,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: { effort: 'low' },
+    system: [
+      { type: 'text', text: CHAT_SYSTEM },
+      { type: 'text', text: `Language: ${language}\nForecast summary (JSON):\n${JSON.stringify(summary)}` },
+    ],
+    messages,
+  });
+  await recordUsage('chat', response.usage);
+  if (response.stop_reason === 'refusal') return 'Sorry, I can’t help with that one. Try asking about your forecast.';
+  const text = response.content.find((b) => b.type === 'text');
+  return text && text.type === 'text' ? text.text : 'Sorry, I didn’t catch that. Could you ask again?';
+}

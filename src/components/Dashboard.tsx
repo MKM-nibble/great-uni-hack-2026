@@ -8,7 +8,7 @@ import { backtest, forecast, salaryPlan, type ForecastInput } from '@/forecast/e
 import { buildInsights } from '@/forecast/insights';
 import { buildOutlook } from '@/forecast/outlook';
 import { OutlookPie } from '@/components/OutlookPie';
-import { coachSummary, rulesCoach, LANGUAGES, type CoachAdvice, type Language } from '@/lib/coach';
+import { coachSummary, rulesCoach, type CoachAdvice, type Language } from '@/lib/coach';
 import { daysBetween, fmtDate, fmtMoney, parseIso, today } from '@/lib/dates';
 import { loadProfile } from '@/lib/profile-store';
 import { Card, Container, PageHero } from '@/components/ui';
@@ -275,7 +275,7 @@ function RewindBanner({ name, b }: { name: string; b: ReturnType<typeof backtest
 }
 
 function Coach({ rules, summary, cacheKey }: { rules: CoachAdvice; summary: ReturnType<typeof coachSummary>; cacheKey?: string }) {
-  const [language, setLanguage] = useState<Language>('English');
+  const language: Language = 'English';
   const [state, setState] = useState<'idle' | 'loading' | 'error' | 'nokey'>('idle');
   const summaryKey = JSON.stringify(summary);
   const adviceKey = `${summaryKey}|${language}`;
@@ -348,26 +348,105 @@ function Coach({ rules, summary, cacheKey }: { rules: CoachAdvice; summary: Retu
         >
           {state === 'loading' ? 'Thinking…' : ai ? 'Ask again' : '✨ Ask Stagger AI'}
         </button>
-        <label className="flex items-center gap-2">
-          <span className="text-white/70">Language</span>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as Language)}
-            className="rounded-md bg-white/15 px-2 py-1 text-white"
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l} value={l} className="text-nw-ink">
-                {l}
-              </option>
-            ))}
-          </select>
-        </label>
         <span className="text-xs text-white/60">
           {advice.source === 'rules' ? 'Written by Stagger’s rules' : 'Written by AI from your forecast summary'}
           {state === 'nokey' && ' · AI not set up on this server'}
           {state === 'error' && ' · AI unavailable, showing rules'}
         </span>
       </div>
+      <Chat summary={summary} language={language} />
     </section>
+  );
+}
+
+const STARTERS = ['Can I afford a weekend away?', 'How much should I save each month?', 'What’s my biggest risk?'];
+
+/** Ask Stagger AI about your own forecast. It only ever sees the forecast summary. */
+function Chat({ summary, language }: { summary: ReturnType<typeof coachSummary>; language: Language }) {
+  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function send(text: string) {
+    const question = text.trim();
+    if (!question || busy) return;
+    const next = [...messages, { role: 'user' as const, content: question }];
+    setMessages(next);
+    setDraft('');
+    setBusy(true);
+    let reply: string;
+    try {
+      const r = await fetch('/api/chat', { method: 'POST', body: JSON.stringify({ summary, messages: next, language }) });
+      reply =
+        r.status === 503
+          ? 'Stagger AI isn’t switched on here yet. Add an API key to chat.'
+          : r.status === 429
+            ? 'Stagger AI has answered a lot of questions today. Try again later.'
+            : r.ok
+              ? (await r.json()).reply
+              : 'Sorry, something went wrong. Try again.';
+    } catch {
+      reply = 'Sorry, I couldn’t connect. Try again.';
+    }
+    setMessages((m) => [...m, { role: 'assistant', content: reply }]);
+    setBusy(false);
+  }
+
+  return (
+    <div className="mt-5 rounded-lg bg-white/10 p-4" dir="ltr">
+      <p className="mb-3 text-sm font-semibold">Ask Stagger AI about your forecast</p>
+      {messages.length > 0 && (
+        <div className="mb-3 max-h-72 space-y-2 overflow-y-auto" aria-live="polite">
+          {messages.map((m, i) => (
+            <p
+              key={i}
+              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                m.role === 'user' ? 'ml-auto bg-white text-nw-ink' : 'bg-white/15'
+              }`}
+            >
+              {m.content}
+            </p>
+          ))}
+          {busy && <p className="w-fit rounded-lg bg-white/15 px-3 py-2 text-sm text-white/70">Thinking…</p>}
+        </div>
+      )}
+      {messages.length === 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {STARTERS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => send(s)}
+              className="rounded-full border border-white/40 px-3 py-1 text-sm hover:bg-white/10"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send(draft);
+        }}
+        className="flex gap-2"
+      >
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Type a question…"
+          aria-label="Ask Stagger AI"
+          maxLength={500}
+          className="min-w-0 flex-1 rounded-full bg-white px-4 py-2 text-sm text-nw-ink"
+        />
+        <button
+          type="submit"
+          disabled={busy || !draft.trim()}
+          className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-nw-purple disabled:opacity-50"
+        >
+          Send
+        </button>
+      </form>
+    </div>
   );
 }

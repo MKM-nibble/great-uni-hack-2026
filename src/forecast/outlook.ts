@@ -124,7 +124,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
         title: `${label} getting cheaper`,
         amount: -saving * monthsFrom(s.from),
         detail: `About ${fmtMoney(saving)} a month less from ${fmtDate(s.from)}`,
-        why: `${s.title}.${s.example ? ' (Demo scenario.)' : ''}`,
+        why: `${s.title}.`,
         refs: refFrom(s.category === 'trade-supplies' ? 'London Metal Exchange: copper' : 'Source', s.sourceUrl),
       });
     } else if (s.confidence === 'signal') {
@@ -134,7 +134,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
         title: `${label} may go up`,
         amount: monthly * BUFFER * monthsFrom(s.from),
         detail: `No reliable estimate. Keep a 10% buffer: about ${fmtMoney(monthly * BUFFER)} a month`,
-        why: `${s.title}.${s.example ? ' (Demo scenario.)' : ''}`,
+        why: `${s.title}.`,
         refs: [
           ...refFrom(s.category === 'fuel' ? 'The Guardian: Strait of Hormuz' : 'Source', s.sourceUrl),
           ...(s.category === 'fuel' ? [REF.fuelPrices] : []),
@@ -224,7 +224,7 @@ export function buildOutlook(profile: Profile, f: Forecast): { sections: Outlook
   });
   const sections = [
     section('up', 'Costs going up', '#c4122f', up),
-    section('coming', 'Big costs coming', '#5e10b1', coming),
+    section('coming', 'Current costs', '#5e10b1', coming),
     section('buffer', 'Keep a buffer', '#b45d00', buffer),
     section('down', 'Costs going down', '#2a7d3e', down),
   ].filter((s) => s.items.length);
